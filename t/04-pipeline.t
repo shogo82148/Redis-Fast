@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use Test::More;
 use Test::Fatal;
-use Redis;
+use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 use Test::Deep;
@@ -12,7 +12,7 @@ use Test::Deep;
 my ($c, $srv) = redis();
 END { $c->() if $c }
 
-ok(my $r = Redis->new(server => $srv), 'connected to our test redis-server');
+ok(my $r = Redis::Fast->new(server => $srv), 'connected to our test redis-server');
 
 sub pipeline_ok {
   my ($desc, @commands) = @_;

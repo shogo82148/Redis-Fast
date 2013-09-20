@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 use Test::More;
-use Redis;
+use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 use Digest::SHA qw(sha1_hex);
@@ -11,7 +11,7 @@ use Digest::SHA qw(sha1_hex);
 my ($c, $srv) = redis();
 END { $c->() if $c }
 
-my $o = Redis->new(server => $srv);
+my $o = Redis::Fast->new(server => $srv);
 
 ## Make sure SCRIPT commands are available
 eval { $o->script_flush };

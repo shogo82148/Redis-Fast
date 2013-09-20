@@ -1,4 +1,4 @@
-package Redis::List;
+package Redis::Fast::List;
 
 # ABSTRACT: tie Perl arrays to Redis lists
 # VERSION
@@ -6,7 +6,7 @@ package Redis::List;
 
 use strict;
 use warnings;
-use base qw/Redis Tie::Array/;
+use base qw/Redis::Fast Tie::Array/;
 
 
 sub TIEARRAY {

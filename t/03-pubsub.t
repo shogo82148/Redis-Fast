@@ -5,7 +5,7 @@ use strict;
 use Test::More;
 use Test::Fatal;
 use Test::Deep;
-use Redis;
+use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer qw( redis reap );
 
@@ -14,8 +14,8 @@ END { $c->() if $c }
 
 subtest 'basics' => sub {
   my %got;
-  ok(my $pub = Redis->new(server => $srv), 'connected to our test redis-server (pub)');
-  ok(my $sub = Redis->new(server => $srv), 'connected to our test redis-server (sub)');
+  ok(my $pub = Redis::Fast->new(server => $srv), 'connected to our test redis-server (pub)');
+  ok(my $sub = Redis::Fast->new(server => $srv), 'connected to our test redis-server (sub)');
 
   is($pub->publish('aa', 'v1'), 0, "No subscribers to 'aa' topic");
 
@@ -129,7 +129,7 @@ subtest 'server is killed while waiting for subscribe' => sub {
   BAIL_OUT("Fork failed, aborting") unless defined $pid;
 
   if ($pid) {    ## parent, we'll wait for the child to die quickly
-    ok(my $sync = Redis->new(server => $srv), 'connected to our test redis-server (sync parent)');
+    ok(my $sync = Redis::Fast->new(server => $srv), 'connected to our test redis-server (sync parent)');
     BAIL_OUT('Missed sync while waiting for child') unless defined $sync->blpop('wake_up_parent', 4);
 
     ok($another_kill_switch->(), "pub/sub redis server killed");
@@ -148,8 +148,8 @@ subtest 'server is killed while waiting for subscribe' => sub {
     }
   }
   else {    ## child
-    my $sync = Redis->new(server => $srv);
-    my $sub  = Redis->new(server => $another_server);
+    my $sync = Redis::Fast->new(server => $srv);
+    my $sub  = Redis::Fast->new(server => $another_server);
     $sub->subscribe('chan', sub { });
 
     diag("child is ready to test, signal parent to kill our server");

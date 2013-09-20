@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 use Test::More;
-use Redis::List;
+use Redis::Fast::List;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
@@ -13,9 +13,9 @@ END { $c->() if $c }
 
 ## Setup
 my @my_list;
-ok(my $redis = tie(@my_list, 'Redis::List', 'my_list', server => $srv), 'tied to our test redis-server');
+ok(my $redis = tie(@my_list, 'Redis::Fast::List', 'my_list', server => $srv), 'tied to our test redis-server');
 ok($redis->ping, 'pinged fine');
-isa_ok($redis, 'Redis::List');
+isa_ok($redis, 'Redis::Fast::List');
 
 
 ## Direct access

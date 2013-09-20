@@ -1,4 +1,4 @@
-package Redis::Hash;
+package Redis::Fast::Hash;
 
 # ABSTRACT: tie Perl hashes to Redis hashes
 # VERSION
@@ -7,7 +7,7 @@ package Redis::Hash;
 use strict;
 use warnings;
 use Tie::Hash;
-use base qw/Redis Tie::StdHash/;
+use base qw/Redis::Fast Tie::StdHash/;
 
 
 sub TIEHASH {

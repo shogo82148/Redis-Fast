@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use Test::More;
 use Test::Fatal;
-use Redis;
+use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
@@ -14,7 +14,7 @@ END { $c->() if $c }
 
 my $o;
 is(
-  exception { $o = Redis->new(server => $srv, name => 'my_name_is_glorious') },
+  exception { $o = Redis::Fast->new(server => $srv, name => 'my_name_is_glorious') },
   undef, 'connected to our test redis-server',
 );
 ok($o->ping, 'ping');
@@ -343,14 +343,14 @@ ok($o->quit,  'quit');
 ok(!$o->quit, 'quit again, ok');
 ok(!$o->ping, '... but after quit() returns false');
 
-$o = Redis->new(server => $srv);
+$o = Redis::Fast->new(server => $srv);
 ok($o->shutdown(),  'shutdown() once is ok');
 ok(!$o->shutdown(), '... twice also lives, but returns false');
 ok(!$o->ping(),     'ping() will be false after shutdown()');
 
 sleep(1);
 like(
-  exception { Redis->new(server => $srv) },
+  exception { Redis::Fast->new(server => $srv) },
   qr/Could not connect to Redis server at $srv/,
   'Failed connection throws exception'
 );

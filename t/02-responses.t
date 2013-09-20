@@ -6,7 +6,7 @@ use Test::More;
 use Test::Fatal;
 use Test::Deep;
 use IO::String;
-use Redis;
+use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
@@ -14,7 +14,7 @@ my ($c, $srv) = redis();
 END { $c->() if $c }
 
 
-ok(my $r = Redis->new(server => $srv), 'connected to our test redis-server');
+ok(my $r = Redis::Fast->new(server => $srv), 'connected to our test redis-server');
 
 sub r {
   $r->{sock} = IO::String->new(join('', map {"$_\r\n"} @_));

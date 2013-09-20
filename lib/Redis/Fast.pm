@@ -1,4 +1,4 @@
-package Redis;
+package Redis::Fast;
 
 # ABSTRACT: Perl binding for Redis database
 # VERSION

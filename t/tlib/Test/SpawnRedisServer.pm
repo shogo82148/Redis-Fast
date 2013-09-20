@@ -3,7 +3,7 @@ package    # Hide from PAUSE
 
 use strict;
 use warnings;
-use Redis;
+use Redis::Fast;
 use File::Temp;
 use IPC::Cmd qw(can_run);
 use POSIX ":sys_wait_h";
@@ -82,7 +82,7 @@ sub spawn_server {
     require Test::More;
     Test::More::diag("Starting server with pid $pid") if $ENV{REDIS_DEBUG};
 
-    my $redis   = Redis->new(server => $addr, reconnect => 5, every => 200);
+    my $redis   = Redis::Fast->new(server => $addr, reconnect => 5, every => 200);
     my $version = $redis->info->{redis_version};
     my $alive   = $$;
 

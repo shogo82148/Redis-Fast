@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use Test::More;
 use Test::Deep;
-use Redis::Hash;
+use Redis::Fast::Hash;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
@@ -14,9 +14,9 @@ END { $c->() if $c }
 
 ## Setup
 my %my_hash;
-ok(my $redis = tie(%my_hash, 'Redis::Hash', 'my_hash', server => $srv), 'tied to our test redis-server');
+ok(my $redis = tie(%my_hash, 'Redis::Fast::Hash', 'my_hash', server => $srv), 'tied to our test redis-server');
 ok($redis->ping, 'pinged fine');
-isa_ok($redis, 'Redis::Hash');
+isa_ok($redis, 'Redis::Fast::Hash');
 
 
 ## Direct access

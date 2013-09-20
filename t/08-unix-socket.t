@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use Test::More;
 use Test::Fatal;
-use Redis;
+use Redis::Fast;
 
 plan skip_all => 'Define ENV TEST_REDIS_SERVER_SOCK_PATH to test UNIX socket support'
   unless $ENV{TEST_REDIS_SERVER_SOCK_PATH};
@@ -15,7 +15,7 @@ my $conn = sub {
   my $r;
   is(
     exception {
-      $r = Redis->new(sock => $ENV{TEST_REDIS_SERVER_SOCK_PATH}, @args);
+      $r = Redis::Fast->new(sock => $ENV{TEST_REDIS_SERVER_SOCK_PATH}, @args);
     },
     undef,
     'Connected to the Redis server ok',
