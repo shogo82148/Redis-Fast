@@ -1,12 +1,12 @@
 {
-   "abstract" : "It's new $module",
+   "abstract" : "Perl binding for Redis database",
    "author" : [
-      "@gmail.com>"
+      "Dobrica Pavlinusic"
    ],
    "dynamic_config" : 0,
    "generated_by" : "Minilla/v0.6.7, CPAN::Meta::Converter version 2.132140",
    "license" : [
-      "perl_5"
+      "unknown"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
@@ -21,7 +21,8 @@
          "share",
          "eg",
          "examples",
-         "author"
+         "author",
+         "builder"
       ]
    },
    "prereqs" : {
@@ -29,7 +30,8 @@
          "requires" : {
             "CPAN::Meta" : "0",
             "CPAN::Meta::Prereqs" : "0",
-            "Module::Build" : "0.38"
+            "Module::Build" : "0.38",
+            "Module::Build::XSUtil" : "0.02"
          }
       },
       "develop" : {
@@ -42,15 +44,45 @@
       },
       "runtime" : {
          "requires" : {
-            "perl" : "5.008005"
+            "perl" : "5.008001"
          }
       },
       "test" : {
          "requires" : {
+            "File::Temp" : "0",
+            "Test::Deep" : "0",
             "Test::More" : "0.98"
          }
       }
    },
    "release_status" : "unstable",
-   "version" : "0.01"
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/melo/perl-redis/issues"
+      },
+      "homepage" : "https://github.com/melo/perl-redis",
+      "repository" : {
+         "url" : "https://github.com/melo/perl-redis.git",
+         "web" : "https://github.com/melo/perl-redis"
+      }
+   },
+   "version" : "0.01",
+   "x_contributors" : [
+      "sunnavy <sunnavy@bestpractical.com>",
+      "U-LIFEBOOK\\Administrator <Administrator@LIFEBOOK.(none)>",
+      "Dobrica Pavlinusic <dpavlin@rot13.org>",
+      "Jeff Lavallee <jeff@zeroclue.com>",
+      "Flavio Poletti <flavio@polettix.it>",
+      "Ulrich Habel <rhaen@cpan.org>",
+      "Thiago Berlitz Rondon <thiago.rondon@gmail.com>",
+      "Aaron Crane <arc@aaroncrane.co.uk>",
+      "Michael Klishin <michaelklishin@me.com>",
+      "Aaron Crane <arc@cpan.org>",
+      "Steffen Mueller <smueller@cpan.org>",
+      "Gregor Herrmann <gregoa@debian.org>",
+      "Volker Kroll <vkroll@allein-zu-haus.de>",
+      "Pedro Melo <melo@simplicidade.org>",
+      "perlpong <calyx238@gmail.com>",
+      "Ichinose Shogo <shogo82148@gmail.com>"
+   ]
 }

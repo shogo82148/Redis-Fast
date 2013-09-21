@@ -1,8 +1,7 @@
 package Redis::Fast;
 
 # ABSTRACT: Perl binding for Redis database
-# VERSION
-# AUTHORITY
+our $VERSION = '0.01';
 
 use warnings;
 use strict;
@@ -719,6 +718,12 @@ sub __throw_reconnect {
 1;    # End of Redis.pm
 
 __END__
+
+=head1 AUTHOR
+
+Dobrica Pavlinusic
+
+Modified by Ichinose Shogo E<lt>shogo82148@gmail.comE<gt>
 
 =head1 SYNOPSIS
 
