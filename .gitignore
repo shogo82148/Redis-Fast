@@ -7,4 +7,15 @@ Makefile.old
 *.tar.gz
 dump.rdb
 Redis-*
-.build/
+/.build/
+/_build/
+/Build
+
+/carton.lock
+/.carton/
+/local/
+
+nytprof.out
+nytprof/
+
+MYMETA.*
