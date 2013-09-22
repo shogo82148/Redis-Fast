@@ -37,7 +37,7 @@ subtest 'Reconnection discards pending commands' => sub {
   my $processed_pending = 0;
   $r->dbsize(sub { $processed_pending++ });
 
-  ok(close(delete $r->{sock}), 'evilly close connection to the server');
+  _wait_for_redis_timeout();
   ok($r->set(foo => 'bar'), 'send command with reconnect');
 
   is($processed_pending, 0, 'pending command discarded on reconnect');

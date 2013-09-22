@@ -162,25 +162,6 @@ sub __run_cmd {
 
 
 ### Commands with extra logic
-sub quit {
-  my ($self) = @_;
-  return unless $self->{sock};
-
-  confess "[quit] only works in synchronous mode, "
-    if @_ && ref $_[-1] eq 'CODE';
-
-  try {
-    $self->wait_all_responses;
-    $self->__send_command('QUIT');
-  }
-  catch {
-    ## Ignore, we are quiting anyway...
-  };
-
-  close(delete $self->{sock}) if $self->{sock};
-
-  return 1;
-}
 
 sub shutdown {
   my ($self) = @_;
