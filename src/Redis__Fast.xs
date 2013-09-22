@@ -21,6 +21,9 @@ typedef struct redis_fast_s {
     int every;
 } redis_fast_t, *Redis__Fast;
 
+typedef struct redis_fast_cb_s {
+    SV* cb;
+} redis_fast_cd_t;
 
 static void wait_for_event(Redis__Fast self) {
     if(self==NULL) return;
@@ -132,9 +135,57 @@ static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* p
     *sv_reply = Redis__Fast_decode_reply((redisReply*)reply);
 }
 
-static void Redis__Fast_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
+static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
+    redis_fast_cd_t *cbt = (redis_fast_cd_t*)privdata;
     SV* sv_reply;
-    sv_reply = Redis__Fast_decode_reply((redisReply*)reply);
+    SV* sv_undef;
+    SV* sv_err;
+    sv_undef = sv_2mortal(newSV(0));
+
+    if (reply) {
+        sv_reply = Redis__Fast_decode_reply((redisReply*)reply);
+
+        dSP;
+
+        ENTER;
+        SAVETMPS;
+
+        PUSHMARK(SP);
+        if (((redisReply*)reply)->type == REDIS_REPLY_ERROR) {
+            PUSHs(sv_undef);
+            PUSHs(sv_reply);
+        }
+        else {
+            PUSHs(sv_reply);
+        }
+        PUTBACK;
+
+        call_sv(cbt->cb, G_DISCARD);
+
+        FREETMPS;
+        LEAVE;
+    } else {
+        fprintf(stderr, "here error: %s\n", c->errstr);
+        sv_err = sv_2mortal(newSVpv(c->errstr, 0));
+
+        dSP;
+
+        ENTER;
+        SAVETMPS;
+
+        PUSHMARK(SP);
+        PUSHs(sv_undef);
+        PUSHs(sv_err);
+        PUTBACK;
+
+        call_sv(cbt->cb, G_DISCARD);
+
+        FREETMPS;
+        LEAVE;
+    }
+
+    SvREFCNT_dec(cbt->cb);
+    Safefree(cbt);
 }
 
 
@@ -304,13 +355,20 @@ CODE:
 SV*
 __std_cmd(Redis::Fast self, ...)
 PREINIT:
+    SV* cb;
     char** argv;
     size_t* argvlen;
     STRLEN len;
     int argc, i;
 CODE:
 {
-    argc = items - 1;
+    cb = ST(items - 1);
+    if (SvROK(cb) && SvTYPE(SvRV(cb)) == SVt_PVCV) {
+        argc = items - 2;
+    } else {
+        cb = NULL;
+        argc = items - 1;
+    }
     Newx(argv, sizeof(char*) * argc, char*);
     Newx(argvlen, sizeof(size_t) * argc, size_t);
 
@@ -319,18 +377,26 @@ CODE:
         argvlen[i] = len;
     }
 
-    {
+    if(cb) {
+        redis_fast_cd_t *cbt;
+        Newx(cbt, sizeof(redis_fast_cd_t), redis_fast_cd_t);
+        cbt->cb = SvREFCNT_inc(cb);
+        redisAsyncCommandArgv(
+            self->ac, Redis__Fast_async_reply_cb, cbt,
+            argc, (const char**)argv, argvlen
+            );
+    } else {
         SV* ret;
         redisAsyncCommandArgv(
             self->ac, Redis__Fast_sync_reply_cb, &ret,
             argc, (const char**)argv, argvlen
             );
-        Safefree(argv);
-        Safefree(argvlen);
         _wait_all_responses(self);
         ST(0) = ret;
         XSRETURN(1);
     }
+    Safefree(argv);
+    Safefree(argvlen);
 }
 
 
