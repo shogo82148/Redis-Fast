@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <sys/select.h>
 
+typedef SV* (*CUSTOM_DECODE)(SV*);
+
 typedef struct redis_fast_s {
     redisAsyncContext* ac;
     char* hostname;
@@ -25,10 +27,12 @@ typedef struct redis_fast_s {
 typedef struct redis_fast_sync_cb_s {
     SV* ret;
     char* error;
+    CUSTOM_DECODE custom_decode;
 } redis_fast_sync_cb_t;
 
 typedef struct redis_fast_async_cb_s {
     SV* cb;
+    CUSTOM_DECODE custom_decode;
 } redis_fast_async_cb_t;
 
 #define WAIT_FOR_READ  0x01
@@ -36,6 +40,7 @@ typedef struct redis_fast_async_cb_s {
 typedef struct redis_fast_event_s {
     int flags;
 } redis_fast_event_t;
+
 
 static void AddRead(void *privdata) {
     redis_fast_event_t *e = (redis_fast_event_t*)privdata;
@@ -248,6 +253,9 @@ static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* p
     redis_fast_sync_cb_t *cbt = (redis_fast_sync_cb_t*)privdata;
     if(reply) {
         cbt->ret = Redis__Fast_decode_reply(self, (redisReply*)reply);
+        if(cbt->custom_decode) {
+            cbt->ret = (cbt->custom_decode)(cbt->ret);
+        }
     } else {
         cbt->error = c->errstr;
     }
@@ -263,30 +271,70 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
 
     if (reply) {
         sv_reply = Redis__Fast_decode_reply(self, (redisReply*)reply);
-
-        dSP;
-
-        ENTER;
-        SAVETMPS;
-
-        PUSHMARK(SP);
-        if (((redisReply*)reply)->type == REDIS_REPLY_ERROR) {
-            PUSHs(sv_undef);
-            PUSHs(sv_reply);
+        if(cbt->custom_decode) {
+            sv_reply = (cbt->custom_decode)(sv_reply);
         }
-        else {
-            PUSHs(sv_reply);
+
+        {
+            dSP;
+
+            ENTER;
+            SAVETMPS;
+
+            PUSHMARK(SP);
+            if (((redisReply*)reply)->type == REDIS_REPLY_ERROR) {
+                PUSHs(sv_undef);
+                PUSHs(sv_reply);
+            }
+            else {
+                PUSHs(sv_reply);
+            }
+            PUTBACK;
+
+            call_sv(cbt->cb, G_DISCARD);
+
+            FREETMPS;
+            LEAVE;
         }
-        PUTBACK;
-
-        call_sv(cbt->cb, G_DISCARD);
-
-        FREETMPS;
-        LEAVE;
     }
 
     SvREFCNT_dec(cbt->cb);
     Safefree(cbt);
+}
+
+static SV* Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECODE custom_decode, SV* cb, int argc, const char** argv, size_t* argvlen) {
+    if(cb) {
+        redis_fast_async_cb_t *cbt;
+        Newx(cbt, sizeof(redis_fast_async_cb_t), redis_fast_async_cb_t);
+        cbt->cb = SvREFCNT_inc(cb);
+        cbt->custom_decode = custom_decode;
+        redisAsyncCommandArgv(
+            self->ac, Redis__Fast_async_reply_cb, cbt,
+            argc, argv, argvlen
+            );
+    } else {
+        redis_fast_sync_cb_t cbt;
+        int i, cnt = (self->reconnect == 0 ? 1 : 2);
+        for(i = 0; i < cnt; i++) {
+            cbt.ret = NULL;
+            cbt.error = NULL;
+            cbt.custom_decode = custom_decode;
+            redisAsyncCommandArgv(
+                self->ac, Redis__Fast_sync_reply_cb, &cbt,
+                argc, argv, argvlen
+                );
+            _wait_all_responses(self);
+            if(cbt.ret) {
+                return cbt.ret;
+            } else {
+                Redis__Fast_reconnect(self);
+            }
+        }
+        if(!cbt.ret) {
+            croak(cbt.error);
+        }
+    }
+    return NULL;
 }
 
 
@@ -443,6 +491,7 @@ CODE:
 SV*
 __std_cmd(Redis::Fast self, ...)
 PREINIT:
+    SV* ret;
     SV* cb;
     char** argv;
     size_t* argvlen;
@@ -471,37 +520,14 @@ CODE:
         argvlen[i] = len;
     }
 
-    if(cb) {
-        redis_fast_async_cb_t *cbt;
-        Newx(cbt, sizeof(redis_fast_async_cb_t), redis_fast_async_cb_t);
-        cbt->cb = SvREFCNT_inc(cb);
-        redisAsyncCommandArgv(
-            self->ac, Redis__Fast_async_reply_cb, cbt,
-            argc, (const char**)argv, argvlen
-            );
+    ret = Redis__Fast_run_cmd(self, 0, NULL, cb, argc, (const char**)argv, argvlen);
+    if(ret) {
+        ST(0) = ret;
+        XSRETURN(1);
     } else {
-        redis_fast_sync_cb_t cbt;
-        int i;
-        for(i = 0; i < self->reconnect == 0 ? 1 : 2; i++) {
-            cbt.ret = NULL;
-            cbt.error = NULL;
-            redisAsyncCommandArgv(
-                self->ac, Redis__Fast_sync_reply_cb, &cbt,
-                argc, (const char**)argv, argvlen
-                );
-            _wait_all_responses(self);
-            if(cbt.ret) {
-                ST(0) = cbt.ret;
-                XSRETURN(1);
-                break;
-            } else {
-                Redis__Fast_reconnect(self);
-            }
-        }
-        if(!cbt.ret) {
-            croak(cbt.error);
-        }
+        XSRETURN(0);
     }
+
     Safefree(argv);
     Safefree(argvlen);
 }
@@ -510,15 +536,17 @@ CODE:
 SV*
 ping(Redis::Fast self)
 PREINIT:
-    SV* ret;
+    redis_fast_sync_cb_t cbt;
 CODE:
 {
     if(self->ac) {
+        cbt.ret = NULL;
+        cbt.custom_decode = NULL;
         redisAsyncCommand(
-            self->ac, Redis__Fast_sync_reply_cb, &ret, "PING"
+            self->ac, Redis__Fast_sync_reply_cb, &cbt, "PING"
             );
         _wait_all_responses(self);
-        ST(0) = ret;
+        ST(0) = cbt.ret;
         XSRETURN(1);
     } else {
         XSRETURN(0);
@@ -529,16 +557,18 @@ CODE:
 SV*
 quit(Redis::Fast self)
 PREINIT:
-    SV* ret;
+    redis_fast_sync_cb_t cbt;
 CODE:
 {
     if(self->ac) {
+        cbt.ret = NULL;
+        cbt.custom_decode = NULL;
         redisAsyncCommand(
-            self->ac, Redis__Fast_sync_reply_cb, &ret, "QUIT"
+            self->ac, Redis__Fast_sync_reply_cb, &cbt, "QUIT"
             );
         redisAsyncDisconnect(self->ac);
         _wait_all_responses(self);
-        ST(0) = ret;
+        ST(0) = cbt.ret;
         XSRETURN(1);
     } else {
         XSRETURN(0);
