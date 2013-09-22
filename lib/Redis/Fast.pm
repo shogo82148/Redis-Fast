@@ -1,7 +1,11 @@
 package Redis::Fast;
 
 # ABSTRACT: Perl binding for Redis database
-our $VERSION = '0.01';
+BEGIN {
+    use XSLoader;
+    our $VERSION = '0.01';
+    XSLoader::load __PACKAGE__, $VERSION;
+}
 
 use warnings;
 use strict;
@@ -27,12 +31,12 @@ use constant EINTR       => eval {Errno::EINTR} || -1E9;
 sub new {
   my $class = shift;
   my %args  = @_;
-  my $self  = bless {}, $class;
+  my $self  = $class->_new;
 
-  $self->{debug} = $args{debug} || $ENV{REDIS_DEBUG};
+  #$self->{debug} = $args{debug} || $ENV{REDIS_DEBUG};
 
   ## default to lax utf8
-  $self->{encoding} = exists $args{encoding} ? $args{encoding} : 'utf8';
+  #$self->{encoding} = exists $args{encoding} ? $args{encoding} : 'utf8';
 
   ## Deal with REDIS_SERVER ENV
   if ($ENV{REDIS_SERVER} && !$args{sock} && !$args{server}) {
@@ -47,51 +51,41 @@ sub new {
     }
   }
 
-  $self->{password}   = $args{password}   if $args{password};
-  $self->{on_connect} = $args{on_connect} if $args{on_connect};
+  #$self->{password}   = $args{password}   if $args{password};
+  #$self->{on_connect} = $args{on_connect} if $args{on_connect};
 
-  if (my $name = $args{name}) {
-    my $on_conn = $self->{on_connect};
-    $self->{on_connect} = sub {
-      my ($redis) = @_;
-      try {
-        my $n = $name;
-        $n = $n->($redis) if ref($n) eq 'CODE';
-        $redis->client_setname($n) if defined $n;
-      };
-      $on_conn->(@_) if $on_conn;
-      }
-  }
+  #if (my $name = $args{name}) {
+  #  my $on_conn = $self->{on_connect};
+  #  $self->{on_connect} = sub {
+  #    my ($redis) = @_;
+  #    try {
+  #      my $n = $name;
+  #      $n = $n->($redis) if ref($n) eq 'CODE';
+  #      $redis->client_setname($n) if defined $n;
+  #    };
+  #    $on_conn->(@_) if $on_conn;
+  #    }
+  #}
 
   if ($args{sock}) {
-    $self->{server} = $args{sock};
-    $self->{builder} = sub { IO::Socket::UNIX->new($_[0]->{server}) };
+    $self->__connection_info_unix($args{sock});
   }
   else {
-    $self->{server} = $args{server} || '127.0.0.1:6379';
-    $self->{builder} = sub {
-      IO::Socket::INET->new(
-        PeerAddr => $_[0]->{server},
-        Proto    => 'tcp',
-      );
-    };
+    my ($server, $port) = split /:/, ($args{server} || '127.0.0.1:6379');
+    $self->__connection_info($server, $port);
   }
 
-  $self->{is_subscriber} = 0;
-  $self->{subscribers}   = {};
-  $self->{reconnect}     = $args{reconnect} || 0;
-  $self->{every}         = $args{every} || 1000;
+  #$self->{is_subscriber} = 0;
+  #$self->{subscribers}   = {};
+  $self->__reconnect($args{reconnect} || 0);
+  $self->__every($args{every} || 1000);
 
   $self->__connect;
 
   return $self;
 }
 
-sub is_subscriber { $_[0]{is_subscriber} }
-
-
-### we don't want DESTROY to fallback into AUTOLOAD
-sub DESTROY { }
+sub is_subscriber { }
 
 
 ### Deal with common, general case, Redis commands
@@ -100,6 +94,8 @@ our $AUTOLOAD;
 sub AUTOLOAD {
   my $command = $AUTOLOAD;
   $command =~ s/.*://;
+
+  warn "AUTOLOAD $command";
 
   my $method = sub { shift->__std_cmd($command, @_) };
 
@@ -110,30 +106,30 @@ sub AUTOLOAD {
   goto $method;
 }
 
-sub __std_cmd {
-  my $self    = shift;
-  my $command = shift;
+#sub __std_cmd {
+#  my $self    = shift;
+#  my $command = shift;
 
-  $self->__is_valid_command($command);
+#  $self->__is_valid_command($command);
 
-  my $cb = @_ && ref $_[-1] eq 'CODE' ? pop : undef;
+#  my $cb = @_ && ref $_[-1] eq 'CODE' ? pop : undef;
 
   # If this is an EXEC command, in pipelined mode, and one of the commands
   # executed in the transaction yields an error, we must collect all errors
   # from that command, rather than throwing an exception immediately.
-  my $collect_errors = $cb && uc($command) eq 'EXEC';
+#  my $collect_errors = $cb && uc($command) eq 'EXEC';
 
   ## Fast path, no reconnect;
-  return $self->__run_cmd($command, $collect_errors, undef, $cb, @_)
-    unless $self->{reconnect};
+#  return $self->__run_cmd($command, $collect_errors, undef, $cb, @_)
+#    unless $self->{reconnect};
 
-  my @cmd_args = @_;
-  $self->__with_reconnect(
-    sub {
-      $self->__run_cmd($command, $collect_errors, undef, $cb, @cmd_args);
-    }
-  );
-}
+#  my @cmd_args = @_;
+#  $self->__with_reconnect(
+#    sub {
+#      $self->__run_cmd($command, $collect_errors, undef, $cb, @cmd_args);
+#    }
+#  );
+#}
 
 sub __with_reconnect {
   my ($self, $cb) = @_;
@@ -182,8 +178,8 @@ sub __run_cmd {
 sub wait_all_responses {
   my ($self) = @_;
 
-  my $queue = $self->{queue};
-  $self->wait_one_response while @$queue;
+  #my $queue = $self->{queue};
+  #$self->wait_one_response while @$queue;
 
   return;
 }
@@ -245,40 +241,37 @@ sub ping {
   confess "[ping] only works in synchronous mode, "
     if @_ && ref $_[-1] eq 'CODE';
 
-  return unless exists $self->{sock};
-
   $self->wait_all_responses;
   return scalar try {
     $self->__std_cmd('PING');
   }
   catch {
-    close(delete $self->{sock});
     return;
   };
 }
 
 sub info {
-  my $self = shift;
-  $self->__is_valid_command('INFO');
+#  my $self = shift;
+#  $self->__is_valid_command('INFO');
 
-  my $custom_decode = sub {
-    my ($reply) = @_;
-    return $reply if !defined $reply || ref $reply;
-    return { map { split(/:/, $_, 2) } grep {/^[^#]/} split(/\r\n/, $reply) };
-  };
+#  my $custom_decode = sub {
+#    my ($reply) = @_;
+#    return $reply if !defined $reply || ref $reply;
+#    return { map { split(/:/, $_, 2) } grep {/^[^#]/} split(/\r\n/, $reply) };
+#  };
 
-  my $cb = @_ && ref $_[-1] eq 'CODE' ? pop : undef;
+#  my $cb = @_ && ref $_[-1] eq 'CODE' ? pop : undef;
 
   ## Fast path, no reconnect
-  return $self->__run_cmd('INFO', 0, $custom_decode, $cb, @_)
-    unless $self->{reconnect};
+#  return $self->__run_cmd('INFO', 0, $custom_decode, $cb, @_)
+#    unless $self->{reconnect};
 
-  my @cmd_args = @_;
-  $self->__with_reconnect(
-    sub {
-      $self->__run_cmd('INFO', 0, $custom_decode, $cb, @cmd_args);
-    }
-  );
+#  my @cmd_args = @_;
+#  $self->__with_reconnect(
+#    sub {
+#      $self->__run_cmd('INFO', 0, $custom_decode, $cb, @cmd_args);
+#    }
+#  );
 }
 
 sub keys {
@@ -436,58 +429,10 @@ sub __process_pubsub_msg {
 sub __is_valid_command {
   my ($self, $cmd) = @_;
 
-  confess("Cannot use command '$cmd' while in SUBSCRIBE mode, ")
-    if $self->{is_subscriber};
+#  confess("Cannot use command '$cmd' while in SUBSCRIBE mode, ")
+#    if $self->{is_subscriber};
 }
 
-
-### Socket operations
-sub __connect {
-  my ($self) = @_;
-  delete $self->{sock};
-
-  # Suppose we have at least one command response pending, but we're about
-  # to reconnect.  The new connection will never get a response to any of
-  # the pending commands, so delete all those pending responses now.
-  $self->{queue} = [];
-
-  ## Fast path, no reconnect
-  return $self->__build_sock() unless $self->{reconnect};
-
-  ## Use precise timers on reconnections
-  require Time::HiRes;
-  my $t0 = [Time::HiRes::gettimeofday()];
-
-  ## Reconnect...
-  while (1) {
-    eval { $self->__build_sock };
-
-    last unless $@;    ## Connected!
-    die if Time::HiRes::tv_interval($t0) > $self->{reconnect};    ## Timeout
-    Time::HiRes::usleep($self->{every});                          ## Retry in...
-  }
-
-  return;
-}
-
-sub __build_sock {
-  my ($self) = @_;
-
-  $self->{sock} = $self->{builder}->($self)
-    || confess("Could not connect to Redis server at $self->{server}: $!");
-
-  if (exists $self->{password}) {
-    try { $self->auth($self->{password}) }
-    catch {
-      $self->{reconnect} = 0;
-      confess("Redis server refused password");
-    };
-  }
-
-  $self->{on_connect}->($self) if exists $self->{on_connect};
-
-  return;
-}
 
 sub __send_command {
   my $self = shift;

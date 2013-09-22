@@ -1,6 +1,7 @@
 requires 'perl', '5.008001';
 
 on 'configure' => sub{
+    requires 'EV::MakeMaker' => 0,
     requires 'Module::Build::XSUtil' => '>=0.02';
 };
 
