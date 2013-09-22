@@ -36,7 +36,14 @@ sub new {
   #$self->{debug} = $args{debug} || $ENV{REDIS_DEBUG};
 
   ## default to lax utf8
-  #$self->{encoding} = exists $args{encoding} ? $args{encoding} : 'utf8';
+  my $encoding = exists $args{encoding} ? $args{encoding} : 'utf8';
+  if($encoding eq 'utf8') {
+      $self->__set_utf8(1);
+  } elsif(!$encoding) {
+      $self->__set_utf8(0);
+  } else {
+      die "encoding $encoding does not support";
+  }
 
   ## Deal with REDIS_SERVER ENV
   if ($ENV{REDIS_SERVER} && !$args{sock} && !$args{server}) {
@@ -96,7 +103,9 @@ sub AUTOLOAD {
   $command =~ s/.*://;
 
   my $method = sub {
-      my $ret = shift->__std_cmd($command, @_);
+      my $self = shift;
+      my $ret;
+      $ret = $self->__std_cmd($command, @_);
       return (wantarray && ref $ret eq 'ARRAY') ? @$ret :$ret;
   };
 
@@ -106,7 +115,6 @@ sub AUTOLOAD {
 
   goto $method;
 }
-
 
 sub __with_reconnect {
   my ($self, $cb) = @_;

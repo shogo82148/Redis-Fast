@@ -19,6 +19,7 @@ typedef struct redis_fast_s {
     char* path;
     int reconnect;
     int every;
+    int is_utf8;
 } redis_fast_t, *Redis__Fast;
 
 typedef struct redis_fast_cb_s {
@@ -98,7 +99,7 @@ static void _wait_all_responses(Redis__Fast self) {
 }
 
 
-static SV* Redis__Fast_decode_reply(redisReply* reply) {
+static SV* Redis__Fast_decode_reply(Redis__Fast self, redisReply* reply) {
     SV* res = NULL;
 
     switch (reply->type) {
@@ -106,6 +107,9 @@ static SV* Redis__Fast_decode_reply(redisReply* reply) {
     case REDIS_REPLY_ERROR:
     case REDIS_REPLY_STATUS:
         res = sv_2mortal(newSVpvn(reply->str, reply->len));
+        if (self->is_utf8) {
+            sv_utf8_decode(res);
+        }
         break;
 
     case REDIS_REPLY_INTEGER:
@@ -121,7 +125,7 @@ static SV* Redis__Fast_decode_reply(redisReply* reply) {
 
         size_t i;
         for (i = 0; i < reply->elements; i++) {
-            av_push(av, Redis__Fast_decode_reply(reply->element[i]));
+            av_push(av, Redis__Fast_decode_reply(self, reply->element[i]));
         }
         break;
     }
@@ -131,11 +135,13 @@ static SV* Redis__Fast_decode_reply(redisReply* reply) {
 }
 
 static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
+    Redis__Fast self = (Redis__Fast)c->data;
     SV** sv_reply = (SV**)privdata;
-    *sv_reply = Redis__Fast_decode_reply((redisReply*)reply);
+    *sv_reply = Redis__Fast_decode_reply(self, (redisReply*)reply);
 }
 
 static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
+    Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_cd_t *cbt = (redis_fast_cd_t*)privdata;
     SV* sv_reply;
     SV* sv_undef;
@@ -143,7 +149,7 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
     sv_undef = sv_2mortal(newSV(0));
 
     if (reply) {
-        sv_reply = Redis__Fast_decode_reply((redisReply*)reply);
+        sv_reply = Redis__Fast_decode_reply(self, (redisReply*)reply);
 
         dSP;
 
@@ -231,6 +237,22 @@ __get_every(Redis::Fast self, int val)
 CODE:
 {
     RETVAL = self->every;
+}
+
+
+int
+__set_utf8(Redis::Fast self, int val)
+CODE:
+{
+    RETVAL = self->is_utf8 = val;
+}
+
+
+int
+__get_utf8(Redis::Fast self, int val)
+CODE:
+{
+    RETVAL = self->is_utf8;
 }
 
 
@@ -373,7 +395,11 @@ CODE:
     Newx(argvlen, sizeof(size_t) * argc, size_t);
 
     for (i = 0; i < argc; i++) {
-        argv[i] = SvPV(ST(i + 1), len);
+        if(self->is_utf8) {
+            argv[i] = SvPVutf8(ST(i + 1), len);
+        } else {
+            argv[i] = SvPV(ST(i + 1), len);
+        }
         argvlen[i] = len;
     }
 
