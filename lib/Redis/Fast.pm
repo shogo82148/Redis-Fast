@@ -106,7 +106,7 @@ sub AUTOLOAD {
       my $self = shift;
       my $ret;
       $ret = $self->__std_cmd($command, @_);
-      return (wantarray && ref $ret eq 'ARRAY') ? @$ret :$ret;
+      return (wantarray && ref $ret eq 'ARRAY') ? @$ret : $ret;
   };
 
   # Save this method for future calls

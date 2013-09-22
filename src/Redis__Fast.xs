@@ -125,7 +125,7 @@ static SV* Redis__Fast_decode_reply(Redis__Fast self, redisReply* reply) {
 
         size_t i;
         for (i = 0; i < reply->elements; i++) {
-            av_push(av, Redis__Fast_decode_reply(self, reply->element[i]));
+            av_push(av, SvREFCNT_inc(Redis__Fast_decode_reply(self, reply->element[i])));
         }
         break;
     }
