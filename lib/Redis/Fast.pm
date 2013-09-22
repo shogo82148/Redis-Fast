@@ -77,8 +77,8 @@ sub new {
 
   #$self->{is_subscriber} = 0;
   #$self->{subscribers}   = {};
-  $self->__reconnect($args{reconnect} || 0);
-  $self->__every($args{every} || 1000);
+  $self->__set_reconnect($args{reconnect} || 0);
+  $self->__set_every($args{every} || 1000);
 
   $self->__connect;
 
@@ -95,9 +95,10 @@ sub AUTOLOAD {
   my $command = $AUTOLOAD;
   $command =~ s/.*://;
 
-  warn "AUTOLOAD $command";
-
-  my $method = sub { shift->__std_cmd($command, @_) };
+  my $method = sub {
+      my $ret = shift->__std_cmd($command, @_);
+      return (wantarray && ref $ret eq 'ARRAY') ? @$ret :$ret;
+  };
 
   # Save this method for future calls
   no strict 'refs';
@@ -106,30 +107,6 @@ sub AUTOLOAD {
   goto $method;
 }
 
-#sub __std_cmd {
-#  my $self    = shift;
-#  my $command = shift;
-
-#  $self->__is_valid_command($command);
-
-#  my $cb = @_ && ref $_[-1] eq 'CODE' ? pop : undef;
-
-  # If this is an EXEC command, in pipelined mode, and one of the commands
-  # executed in the transaction yields an error, we must collect all errors
-  # from that command, rather than throwing an exception immediately.
-#  my $collect_errors = $cb && uc($command) eq 'EXEC';
-
-  ## Fast path, no reconnect;
-#  return $self->__run_cmd($command, $collect_errors, undef, $cb, @_)
-#    unless $self->{reconnect};
-
-#  my @cmd_args = @_;
-#  $self->__with_reconnect(
-#    sub {
-#      $self->__run_cmd($command, $collect_errors, undef, $cb, @cmd_args);
-#    }
-#  );
-#}
 
 sub __with_reconnect {
   my ($self, $cb) = @_;
@@ -175,27 +152,6 @@ sub __run_cmd {
     :                                    $ret;
 }
 
-sub wait_all_responses {
-  my ($self) = @_;
-
-  #my $queue = $self->{queue};
-  #$self->wait_one_response while @$queue;
-
-  return;
-}
-
-sub wait_one_response {
-  my ($self) = @_;
-
-  my $handler = shift @{ $self->{queue} };
-  return unless $handler;
-
-  my ($command, $cb, $collect_errors) = @$handler;
-  $cb->($self->__read_response($command, $collect_errors));
-
-  return;
-}
-
 
 ### Commands with extra logic
 sub quit {
@@ -234,21 +190,6 @@ sub shutdown {
   return 1;
 }
 
-sub ping {
-  my $self = shift;
-  $self->__is_valid_command('PING');
-
-  confess "[ping] only works in synchronous mode, "
-    if @_ && ref $_[-1] eq 'CODE';
-
-  $self->wait_all_responses;
-  return scalar try {
-    $self->__std_cmd('PING');
-  }
-  catch {
-    return;
-  };
-}
 
 sub info {
 #  my $self = shift;
@@ -431,133 +372,6 @@ sub __is_valid_command {
 
 #  confess("Cannot use command '$cmd' while in SUBSCRIBE mode, ")
 #    if $self->{is_subscriber};
-}
-
-
-sub __send_command {
-  my $self = shift;
-  my $cmd  = uc(shift);
-  my $enc  = $self->{encoding};
-  my $deb  = $self->{debug};
-
-  my $sock = $self->{sock}
-    || $self->__throw_reconnect('Not connected to any server');
-
-  warn "[SEND] $cmd ", Dumper([@_]) if $deb;
-
-  ## Encode command using multi-bulk format
-  my @cmd     = split /_/, $cmd;
-  my $n_elems = scalar(@_) + scalar(@cmd);
-  my $buf     = "\*$n_elems\r\n";
-  for my $elem (@cmd, @_) {
-    my $bin = $enc ? encode($enc, $elem) : $elem;
-    $buf .= defined($bin) ? '$' . length($bin) . "\r\n$bin\r\n" : "\$-1\r\n";
-  }
-
-  ## Check to see if socket was closed: reconnect on EOF
-  my $status = __try_read_sock($sock);
-  $self->__throw_reconnect('Not connected to any server')
-    unless defined $status;
-
-  ## Send command, take care for partial writes
-  warn "[SEND RAW] $buf" if $deb;
-  while ($buf) {
-    my $len = syswrite $sock, $buf, length $buf;
-    $self->__throw_reconnect("Could not write to Redis server: $!")
-      unless defined $len;
-    substr $buf, 0, $len, "";
-  }
-
-  return;
-}
-
-sub __read_response {
-  my ($self, $cmd, $collect_errors) = @_;
-
-  confess("Not connected to any server") unless $self->{sock};
-
-  local $/ = "\r\n";
-
-  ## no debug => fast path
-  return $self->__read_response_r($cmd, $collect_errors) unless $self->{debug};
-
-  my ($result, $error) = $self->__read_response_r($cmd, $collect_errors);
-  warn "[RECV] $cmd ", Dumper($result, $error) if $self->{debug};
-  return $result, $error;
-}
-
-sub __read_response_r {
-  my ($self, $command, $collect_errors) = @_;
-
-  my ($type, $result) = $self->__read_line;
-
-  if ($type eq '-') {
-    return undef, $result;
-  }
-  elsif ($type eq '+' || $type eq ':') {
-    return $result, undef;
-  }
-  elsif ($type eq '$') {
-    return undef, undef if $result < 0;
-    return $self->__read_len($result + 2), undef;
-  }
-  elsif ($type eq '*') {
-    return undef, undef if $result < 0;
-
-    my @list;
-    while ($result--) {
-      my @nested = $self->__read_response_r($command, $collect_errors);
-      if ($collect_errors) {
-        push @list, \@nested;
-      }
-      else {
-        confess "[$command] $nested[1], " if defined $nested[1];
-        push @list, $nested[0];
-      }
-    }
-    return \@list, undef;
-  }
-  else {
-    confess "unknown answer type: $type ($result), ";
-  }
-}
-
-sub __read_line {
-  my $self = $_[0];
-  my $sock = $self->{sock};
-
-  my $data = <$sock>;
-  confess("Error while reading from Redis server: $!")
-    unless defined $data;
-
-  chomp $data;
-  warn "[RECV RAW] '$data'" if $self->{debug};
-
-  my $type = substr($data, 0, 1, '');
-  return ($type, $data) unless $self->{encoding};
-  return ($type, decode($self->{encoding}, $data));
-}
-
-sub __read_len {
-  my ($self, $len) = @_;
-
-  my $data   = '';
-  my $offset = 0;
-  while ($len) {
-    my $bytes = read $self->{sock}, $data, $len, $offset;
-    confess("Error while reading from Redis server: $!")
-      unless defined $bytes;
-    confess("Redis server closed connection") unless $bytes;
-
-    $offset += $bytes;
-    $len -= $bytes;
-  }
-
-  chomp $data;
-  warn "[RECV RAW] '$data'" if $self->{debug};
-
-  return $data unless $self->{encoding};
-  return decode($self->{encoding}, $data);
 }
 
 

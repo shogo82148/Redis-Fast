@@ -30,22 +30,17 @@ static void wait_for_event(Redis__Fast self) {
     int fd = c->fd;
     fd_set readfds, writefds, exceptfds;
 
-    fprintf(stderr, "select %d\n", fd);
-
     FD_ZERO(&readfds); FD_SET(fd, &readfds);
     FD_ZERO(&writefds); FD_SET(fd, &writefds);
     FD_ZERO(&exceptfds); FD_SET(fd, &exceptfds);
     select(fd + 1, &readfds, &writefds, &exceptfds, NULL);
 
-    if(FD_ISSET(fd, &exceptfds)) {
-        fprintf(stderr, "error!!\n");
-    }
     if(self->ac && FD_ISSET(fd, &readfds)) {
-        fprintf(stderr, "ready to read\n");
+        //fprintf(stderr, "ready to read\n");
         redisAsyncHandleRead(self->ac);
     }
     if(self->ac && FD_ISSET(fd, &writefds)) {
-        fprintf(stderr, "ready to write\n");
+        //fprintf(stderr, "ready to write\n");
         redisAsyncHandleWrite(self->ac);
     }
 }
@@ -56,7 +51,6 @@ static void Redis__Fast_connect_cb(redisAsyncContext* c, int status) {
         // Connection Error!!
         // Redis context will close automatically
         self->ac = NULL;
-        fprintf(stderr, "fail connect!!\n");
     } else {
         // TODO: send password
         // TODO: call on_connect callback
@@ -64,7 +58,6 @@ static void Redis__Fast_connect_cb(redisAsyncContext* c, int status) {
 }
 
 static void Redis__Fast_disconnect_cb(redisAsyncContext* c, int status) {
-    fprintf(stderr, "disconnecting\n");
     Redis__Fast self = (Redis__Fast)c->data;
     self->ac = NULL;
 }
@@ -76,7 +69,6 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     if(self->path) {
         ac = redisAsyncConnectUnix(self->path);
     } else {
-        fprintf(stderr, "Try to connect\n");
         ac = redisAsyncConnect(self->hostname, self->port);
     }
 
@@ -90,11 +82,59 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     redisAsyncSetDisconnectCallback(ac, (redisDisconnectCallback*)Redis__Fast_disconnect_cb);
 
     // wait to connect...
-    fprintf(stderr, "waiting...\n");
     wait_for_event(self);
 
-    fprintf(stderr, "connected\n");
     return self->ac;
+}
+
+
+static void _wait_all_responses(Redis__Fast self) {
+    while(self->ac && self->ac->replies.tail) {
+        wait_for_event(self);
+    }
+}
+
+
+static SV* Redis__Fast_decode_reply(redisReply* reply) {
+    SV* res = NULL;
+
+    switch (reply->type) {
+    case REDIS_REPLY_STRING:
+    case REDIS_REPLY_ERROR:
+    case REDIS_REPLY_STATUS:
+        res = sv_2mortal(newSVpvn(reply->str, reply->len));
+        break;
+
+    case REDIS_REPLY_INTEGER:
+        res = sv_2mortal(newSViv(reply->integer));
+        break;
+    case REDIS_REPLY_NIL:
+        res = sv_2mortal(newSV(0));
+        break;
+
+    case REDIS_REPLY_ARRAY: {
+        AV* av = (AV*)sv_2mortal((SV*)newAV());
+        res = newRV_inc((SV*)av);
+
+        size_t i;
+        for (i = 0; i < reply->elements; i++) {
+            av_push(av, Redis__Fast_decode_reply(reply->element[i]));
+        }
+        break;
+    }
+    }
+
+    return res;
+}
+
+static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
+    SV** sv_reply = (SV**)privdata;
+    *sv_reply = Redis__Fast_decode_reply((redisReply*)reply);
+}
+
+static void Redis__Fast_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
+    SV* sv_reply;
+    sv_reply = Redis__Fast_decode_reply((redisReply*)reply);
 }
 
 
@@ -104,7 +144,6 @@ Redis::Fast
 _new(char* cls);
 CODE:
 {
-    fprintf(stderr, "new\n");
     PERL_UNUSED_VAR(cls);
     Newxz(RETVAL, sizeof(redis_fast_t), redis_fast_t);
     RETVAL->ac = NULL;
@@ -113,7 +152,7 @@ OUTPUT:
     RETVAL
 
 int
-__reconnect(Redis::Fast self, int val)
+__set_reconnect(Redis::Fast self, int val)
 CODE:
 {
     RETVAL = self->reconnect = val;
@@ -121,10 +160,26 @@ CODE:
 
 
 int
-__every(Redis::Fast self, int val)
+__get_reconnect(Redis::Fast self)
+CODE:
+{
+    RETVAL = self->reconnect;
+}
+
+
+int
+__set_every(Redis::Fast self, int val)
 CODE:
 {
     RETVAL = self->every = val;
+}
+
+
+int
+__get_every(Redis::Fast self, int val)
+CODE:
+{
+    RETVAL = self->every;
 }
 
 
@@ -132,7 +187,6 @@ void
 DESTROY(Redis::Fast self);
 CODE:
 {
-    fprintf(stderr, "DESTROY\n");
     if (self->ac) {
         redisAsyncFree(self->ac);
         self->ac = NULL;
@@ -156,7 +210,6 @@ void
 __connection_info(Redis::Fast self, char* hostname, int port = 6379)
 CODE:
 {
-    fprintf(stderr, "connection info %s:%d\n", hostname, port);
     if(self->hostname) {
         free(self->hostname);
         self->hostname = NULL;
@@ -210,9 +263,7 @@ CODE:
     //$self->{queue} = [];
 
     if(self->reconnect == 0) {
-        fprintf(stderr, "start build_sock\n");
         __build_sock(self);
-        fprintf(stderr, "finish build_sock\n");
         if(!self->ac) {
             croak("connection timed out");
         }
@@ -234,14 +285,67 @@ CODE:
     }
 }
 
-
-int
-__std_cmd(Redis::Fast self, ...)
+void
+wait_all_responses(Redis::Fast self)
 CODE:
 {
-    RETVAL = 0;
+    _wait_all_responses(self);
 }
-OUTPUT:
-    RETVAL
+
+
+void
+wait_one_response(Redis::Fast self)
+CODE:
+{
+    _wait_all_responses(self);
+}
+
+
+SV*
+__std_cmd(Redis::Fast self, ...)
+PREINIT:
+    char** argv;
+    size_t* argvlen;
+    STRLEN len;
+    int argc, i;
+CODE:
+{
+    argc = items - 1;
+    Newx(argv, sizeof(char*) * argc, char*);
+    Newx(argvlen, sizeof(size_t) * argc, size_t);
+
+    for (i = 0; i < argc; i++) {
+        argv[i] = SvPV(ST(i + 1), len);
+        argvlen[i] = len;
+    }
+
+    {
+        SV* ret;
+        redisAsyncCommandArgv(
+            self->ac, Redis__Fast_sync_reply_cb, &ret,
+            argc, (const char**)argv, argvlen
+            );
+        Safefree(argv);
+        Safefree(argvlen);
+        _wait_all_responses(self);
+        ST(0) = ret;
+        XSRETURN(1);
+    }
+}
+
+
+SV*
+ping(Redis::Fast self)
+PREINIT:
+    SV* ret;
+CODE:
+{
+    redisAsyncCommand(
+        self->ac, Redis__Fast_sync_reply_cb, &ret, "PING"
+        );
+    _wait_all_responses(self);
+    ST(0) = ret;
+    XSRETURN(1);
+}
 
 
