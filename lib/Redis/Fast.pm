@@ -163,23 +163,6 @@ sub __run_cmd {
 
 ### Commands with extra logic
 
-sub shutdown {
-  my ($self) = @_;
-  $self->__is_valid_command('SHUTDOWN');
-
-  confess "[shutdown] only works in synchronous mode, "
-    if @_ && ref $_[-1] eq 'CODE';
-
-  return unless $self->{sock};
-
-  $self->wait_all_responses;
-  $self->__send_command('SHUTDOWN');
-  close(delete $self->{sock}) || confess("Can't close socket: $!");
-
-  return 1;
-}
-
-
 sub keys {
     my $self = shift;
     my $ret;

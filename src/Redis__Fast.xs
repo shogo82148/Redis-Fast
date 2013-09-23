@@ -187,7 +187,12 @@ static void Redis__Fast_connect(Redis__Fast self) {
     if(self->reconnect == 0) {
         __build_sock(self);
         if(!self->ac) {
-            croak("connection timed out");
+            if(self->path) {
+                snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s", self->path);
+            } else {
+                snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s:%d", self->hostname, self->port);
+            }
+            croak(self->error);
         }
         return ;
     }
@@ -200,7 +205,12 @@ static void Redis__Fast_connect(Redis__Fast self) {
             return;
         }
         if(clock() - start > self->reconnect * CLOCKS_PER_SEC) {
-            croak("connection timed out");
+            if(self->path) {
+                snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s", self->path);
+            } else {
+                snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s:%d", self->hostname, self->port);
+            }
+            croak(self->error);
             return;
         }
         usleep(self->every);
@@ -647,6 +657,24 @@ CODE:
         redisAsyncDisconnect(self->ac);
         _wait_all_responses(self);
         ST(0) = cbt.ret;
+        XSRETURN(1);
+    } else {
+        XSRETURN(0);
+    }
+}
+
+
+SV*
+shutdown(Redis::Fast self)
+CODE:
+{
+    if(self->ac) {
+        redisAsyncCommand(
+            self->ac, NULL, NULL, "SHUTDOWN"
+            );
+        redisAsyncDisconnect(self->ac);
+        _wait_all_responses(self);
+        ST(0) = sv_2mortal(newSViv(1));
         XSRETURN(1);
     } else {
         XSRETURN(0);
