@@ -23,6 +23,7 @@ typedef struct redis_fast_s {
     int reconnect;
     int every;
     int is_utf8;
+    int need_recoonect;
 } redis_fast_t, *Redis__Fast;
 
 typedef struct redis_fast_reply_s {
@@ -305,6 +306,7 @@ static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* p
             cbt->ret = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
         }
     } else {
+        self->need_recoonect = 1;
         cbt->ret.result = NULL;
         cbt->ret.error = sv_2mortal( newSVpvn(c->errstr, strlen(c->errstr)) );
     }
@@ -366,6 +368,7 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
         redis_fast_sync_cb_t cbt;
         int i, cnt = (self->reconnect == 0 ? 1 : 2);
         for(i = 0; i < cnt; i++) {
+            self->need_recoonect = 0;
             cbt.ret.result = NULL;
             cbt.ret.error = NULL;
             cbt.custom_decode = custom_decode;
@@ -375,7 +378,8 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
                 argc, argv, argvlen
                 );
             _wait_all_responses(self);
-            return cbt.ret;
+            if(!self->need_recoonect) return cbt.ret;
+            Redis__Fast_reconnect(self);
         }
     }
     return ret;
