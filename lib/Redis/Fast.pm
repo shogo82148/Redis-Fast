@@ -204,33 +204,6 @@ sub info {
 #  );
 }
 
-sub keys {
-  my $self = shift;
-  $self->__is_valid_command('KEYS');
-
-  my $custom_decode = sub {
-    my ($reply, $synchronous_scalar) = @_;
-
-    ## Support redis <= 1.2.6
-    $reply = [split(/\s/, $reply)] if defined $reply && !ref $reply;
-
-    return ref $reply && ($synchronous_scalar || wantarray) ? @$reply : $reply;
-  };
-
-  my $cb = @_ && ref $_[-1] eq 'CODE' ? pop : undef;
-
-  ## Fast path, no reconnect
-  return $self->__run_cmd('KEYS', 0, $custom_decode, $cb, @_)
-    unless $self->{reconnect};
-
-  my @cmd_args = @_;
-  $self->__with_reconnect(
-    sub {
-      $self->__run_cmd('KEYS', 0, $custom_decode, $cb, @cmd_args);
-    }
-  );
-}
-
 
 ### PubSub
 sub wait_for_messages {

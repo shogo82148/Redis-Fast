@@ -337,6 +337,11 @@ static SV* Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECO
     return NULL;
 }
 
+static SV* Redis__Fast_keys_custom_decode(SV* reply) {
+    // TODO: Support redis <= 1.2.6
+    return reply;
+}
+
 
 MODULE = Redis::Fast		PACKAGE = Redis::Fast
 
@@ -576,3 +581,48 @@ CODE:
 }
 
 
+SV*
+keys(Redis::Fast self, ...)
+PREINIT:
+    SV* ret;
+    SV* cb;
+    char** argv;
+    size_t* argvlen;
+    STRLEN len;
+    int argc, i;
+CODE:
+{
+    Redis__Fast_reconnect(self);
+
+    cb = ST(items - 1);
+    if (SvROK(cb) && SvTYPE(SvRV(cb)) == SVt_PVCV) {
+        argc = items - 1;
+    } else {
+        cb = NULL;
+        argc = items;
+    }
+    Newx(argv, sizeof(char*) * argc, char*);
+    Newx(argvlen, sizeof(size_t) * argc, size_t);
+
+    argv[0] = "KEYS";
+    argvlen[0] = 4;
+    for (i = 1; i < argc; i++) {
+        if(self->is_utf8) {
+            argv[i] = SvPVutf8(ST(i), len);
+        } else {
+            argv[i] = SvPV(ST(i), len);
+        }
+        argvlen[i] = len;
+    }
+
+    ret = Redis__Fast_run_cmd(self, 0, Redis__Fast_keys_custom_decode, cb, argc, (const char**)argv, argvlen);
+    if(ret) {
+        ST(0) = ret;
+        XSRETURN(1);
+    } else {
+        XSRETURN(0);
+    }
+
+    Safefree(argv);
+    Safefree(argvlen);
+}
