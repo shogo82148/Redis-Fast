@@ -12,7 +12,6 @@
 #include <stdio.h>
 #include <sys/select.h>
 
-typedef SV* (*CUSTOM_DECODE)(SV*);
 
 typedef struct redis_fast_s {
     redisAsyncContext* ac;
@@ -23,6 +22,8 @@ typedef struct redis_fast_s {
     int every;
     int is_utf8;
 } redis_fast_t, *Redis__Fast;
+
+typedef SV* (*CUSTOM_DECODE)(Redis__Fast self, redisReply* reply);
 
 typedef struct redis_fast_sync_cb_s {
     SV* ret;
@@ -252,9 +253,10 @@ static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* p
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_sync_cb_t *cbt = (redis_fast_sync_cb_t*)privdata;
     if(reply) {
-        cbt->ret = Redis__Fast_decode_reply(self, (redisReply*)reply);
         if(cbt->custom_decode) {
-            cbt->ret = (cbt->custom_decode)(cbt->ret);
+            cbt->ret = (cbt->custom_decode)(self, (redisReply*)reply);
+        } else {
+            cbt->ret = Redis__Fast_decode_reply(self, (redisReply*)reply);
         }
     } else {
         cbt->error = c->errstr;
@@ -270,9 +272,10 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
     sv_undef = sv_2mortal(newSV(0));
 
     if (reply) {
-        sv_reply = Redis__Fast_decode_reply(self, (redisReply*)reply);
         if(cbt->custom_decode) {
-            sv_reply = (cbt->custom_decode)(sv_reply);
+            sv_reply = (cbt->custom_decode)(self, (redisReply*)reply);
+        } else {
+            sv_reply = Redis__Fast_decode_reply(self, (redisReply*)reply);
         }
 
         {
@@ -337,11 +340,55 @@ static SV* Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECO
     return NULL;
 }
 
-static SV* Redis__Fast_keys_custom_decode(SV* reply) {
+static SV* Redis__Fast_keys_custom_decode(Redis__Fast self, redisReply* reply) {
     // TODO: Support redis <= 1.2.6
-    return reply;
+    return Redis__Fast_decode_reply(self, reply);
 }
 
+static SV* Redis__Fast_info_custom_decode(Redis__Fast self, redisReply* reply) {
+    SV* res = NULL;
+    if(reply->type == REDIS_REPLY_STRING ||
+       reply->type == REDIS_REPLY_ERROR ||
+       reply->type == REDIS_REPLY_STATUS) {
+
+        HV* hv = (HV*)sv_2mortal((SV*)newHV());
+        char* str = reply->str;
+        size_t len = reply->len;
+        res = newRV_inc((SV*)hv);
+
+        while(len != 0) {
+            const char* line = (char*)memchr(str, '\r', len);
+            const char* sep;
+            size_t linelen;
+            if(line == NULL) {
+                linelen = len;
+            } else {
+                linelen = line - str;
+            }
+            sep = (char*)memchr(str, ':', linelen);
+            if(str[0] != '#' && sep != NULL) {
+                SV* val;
+                size_t keylen;
+                keylen = sep - str;
+                val = newSVpvn(sep + 1, linelen - keylen - 1);
+                if (self->is_utf8) {
+                    sv_utf8_decode(val);
+                }
+                hv_store(hv, str, keylen, val, 0);
+            }
+            if(line == NULL) {
+                break;
+            } else {
+                len -= linelen + 2;
+                str += linelen + 2;
+            }
+        }
+    } else {
+        res = Redis__Fast_decode_reply(self, reply);
+    }
+
+    return res;
+}
 
 MODULE = Redis::Fast		PACKAGE = Redis::Fast
 
@@ -616,6 +663,53 @@ CODE:
     }
 
     ret = Redis__Fast_run_cmd(self, 0, Redis__Fast_keys_custom_decode, cb, argc, (const char**)argv, argvlen);
+    if(ret) {
+        ST(0) = ret;
+        XSRETURN(1);
+    } else {
+        XSRETURN(0);
+    }
+
+    Safefree(argv);
+    Safefree(argvlen);
+}
+
+
+SV*
+info(Redis::Fast self, ...)
+PREINIT:
+    SV* ret;
+    SV* cb;
+    char** argv;
+    size_t* argvlen;
+    STRLEN len;
+    int argc, i;
+CODE:
+{
+    Redis__Fast_reconnect(self);
+
+    cb = ST(items - 1);
+    if (SvROK(cb) && SvTYPE(SvRV(cb)) == SVt_PVCV) {
+        argc = items - 1;
+    } else {
+        cb = NULL;
+        argc = items;
+    }
+    Newx(argv, sizeof(char*) * argc, char*);
+    Newx(argvlen, sizeof(size_t) * argc, size_t);
+
+    argv[0] = "INFO";
+    argvlen[0] = 4;
+    for (i = 1; i < argc; i++) {
+        if(self->is_utf8) {
+            argv[i] = SvPVutf8(ST(i), len);
+        } else {
+            argv[i] = SvPV(ST(i), len);
+        }
+        argvlen[i] = len;
+    }
+
+    ret = Redis__Fast_run_cmd(self, 0, Redis__Fast_info_custom_decode, cb, argc, (const char**)argv, argvlen);
     if(ret) {
         ST(0) = ret;
         XSRETURN(1);

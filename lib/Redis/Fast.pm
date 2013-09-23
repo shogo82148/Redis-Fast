@@ -180,31 +180,6 @@ sub shutdown {
 }
 
 
-sub info {
-#  my $self = shift;
-#  $self->__is_valid_command('INFO');
-
-#  my $custom_decode = sub {
-#    my ($reply) = @_;
-#    return $reply if !defined $reply || ref $reply;
-#    return { map { split(/:/, $_, 2) } grep {/^[^#]/} split(/\r\n/, $reply) };
-#  };
-
-#  my $cb = @_ && ref $_[-1] eq 'CODE' ? pop : undef;
-
-  ## Fast path, no reconnect
-#  return $self->__run_cmd('INFO', 0, $custom_decode, $cb, @_)
-#    unless $self->{reconnect};
-
-#  my @cmd_args = @_;
-#  $self->__with_reconnect(
-#    sub {
-#      $self->__run_cmd('INFO', 0, $custom_decode, $cb, @cmd_args);
-#    }
-#  );
-}
-
-
 ### PubSub
 sub wait_for_messages {
   my ($self, $timeout) = @_;
