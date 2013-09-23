@@ -629,7 +629,7 @@ CODE:
 
 
 SV*
-keys(Redis::Fast self, ...)
+__keys(Redis::Fast self, ...)
 PREINIT:
     SV* ret;
     SV* cb;

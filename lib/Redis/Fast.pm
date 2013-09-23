@@ -180,6 +180,14 @@ sub shutdown {
 }
 
 
+sub keys {
+    my $self = shift;
+    my $ret;
+    $ret = $self->__keys(@_);
+    return $ret unless ref $ret eq 'ARRAY';
+    return @$ret;
+}
+
 ### PubSub
 sub wait_for_messages {
   my ($self, $timeout) = @_;
