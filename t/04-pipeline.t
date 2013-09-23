@@ -87,6 +87,7 @@ subtest 'transaction with error and no pipeline' => sub {
 
 
 subtest 'wait_one_response' => sub {
+  plan skip_all => 'hiredis cannot wait_one_response';
   my $first;
   my $second;
 

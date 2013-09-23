@@ -25,16 +25,22 @@ typedef struct redis_fast_s {
     int is_utf8;
 } redis_fast_t, *Redis__Fast;
 
-typedef SV* (*CUSTOM_DECODE)(Redis__Fast self, redisReply* reply);
+typedef struct redis_fast_reply_s {
+    SV* result;
+    SV* error;
+} redis_fast_reply_t;
+
+typedef redis_fast_reply_t (*CUSTOM_DECODE)(Redis__Fast self, redisReply* reply, int collect_errors);
 
 typedef struct redis_fast_sync_cb_s {
-    SV* ret;
-    char* error;
+    redis_fast_reply_t ret;
+    int collect_errors;
     CUSTOM_DECODE custom_decode;
 } redis_fast_sync_cb_t;
 
 typedef struct redis_fast_async_cb_s {
     SV* cb;
+    int collect_errors;
     CUSTOM_DECODE custom_decode;
 } redis_fast_async_cb_t;
 
@@ -226,33 +232,61 @@ static void Redis__Fast_reconnect(Redis__Fast self) {
     }
 }
 
-static SV* Redis__Fast_decode_reply(Redis__Fast self, redisReply* reply) {
-    SV* res = NULL;
+static redis_fast_reply_t Redis__Fast_decode_reply(Redis__Fast self, redisReply* reply, int collect_errors) {
+    redis_fast_reply_t res = {NULL, NULL};
 
     switch (reply->type) {
-    case REDIS_REPLY_STRING:
     case REDIS_REPLY_ERROR:
-    case REDIS_REPLY_STATUS:
-        res = sv_2mortal(newSVpvn(reply->str, reply->len));
+        res.error = sv_2mortal(newSVpvn(reply->str, reply->len));
         if (self->is_utf8) {
-            sv_utf8_decode(res);
+            sv_utf8_decode(res.error);
+        }
+        break;
+    case REDIS_REPLY_STRING:
+    case REDIS_REPLY_STATUS:
+        res.result = sv_2mortal(newSVpvn(reply->str, reply->len));
+        if (self->is_utf8) {
+            sv_utf8_decode(res.result);
         }
         break;
 
     case REDIS_REPLY_INTEGER:
-        res = sv_2mortal(newSViv(reply->integer));
+        res.result = sv_2mortal(newSViv(reply->integer));
         break;
     case REDIS_REPLY_NIL:
-        res = sv_2mortal(newSV(0));
+        res.result = sv_2mortal(newSV(0));
         break;
 
     case REDIS_REPLY_ARRAY: {
         AV* av = (AV*)sv_2mortal((SV*)newAV());
         size_t i;
-        res = newRV_inc((SV*)av);
+        res.result = newRV_inc((SV*)av);
 
         for (i = 0; i < reply->elements; i++) {
-            av_push(av, SvREFCNT_inc(Redis__Fast_decode_reply(self, reply->element[i])));
+            redis_fast_reply_t elem = Redis__Fast_decode_reply(self, reply->element[i], collect_errors);
+            if(collect_errors) {
+                AV* elem_av = (AV*)sv_2mortal((SV*)newAV());
+                if(elem.result) {
+                    av_push(elem_av, SvREFCNT_inc(elem.result));
+                } else {
+                    av_push(elem_av, newSV(0));
+                }
+                if(elem.error) {
+                    av_push(elem_av, SvREFCNT_inc(elem.error));
+                } else {
+                    av_push(elem_av, newSV(0));
+                }
+                av_push(av, newRV_inc((SV*)elem_av));
+            } else {
+                if(elem.result) {
+                    av_push(av, SvREFCNT_inc(elem.result));
+                } else {
+                    av_push(av, newSV(0));
+                }
+                if(elem.error && !res.error) {
+                    res.error = elem.error;
+                }
+            }
         }
         break;
     }
@@ -264,38 +298,34 @@ static SV* Redis__Fast_decode_reply(Redis__Fast self, redisReply* reply) {
 static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_sync_cb_t *cbt = (redis_fast_sync_cb_t*)privdata;
-    if(!reply) {
-        cbt->error = c->errstr;
-    } else if(((redisReply*)reply)->type == REDIS_REPLY_ERROR) {
-        char* str = ((redisReply*)reply)->str;
-        size_t len = ((redisReply*)reply)->len;
-        if(len > MAX_ERROR_SIZE - 1) len = MAX_ERROR_SIZE - 1;
-        strncpy(self->error, str, len);
-        self->error[len] = '\0';
-        cbt->error = self->error;
-    } else {
+    if(reply) {
         if(cbt->custom_decode) {
-            cbt->ret = (cbt->custom_decode)(self, (redisReply*)reply);
+            cbt->ret = (cbt->custom_decode)(self, (redisReply*)reply, cbt->collect_errors);
         } else {
-            cbt->ret = Redis__Fast_decode_reply(self, (redisReply*)reply);
+            cbt->ret = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
         }
+    } else {
+        cbt->ret.result = NULL;
+        cbt->ret.error = sv_2mortal( newSVpvn(c->errstr, strlen(c->errstr)) );
     }
 }
 
 static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_async_cb_t *cbt = (redis_fast_async_cb_t*)privdata;
-    SV* sv_reply;
+    redis_fast_reply_t result;
     SV* sv_undef;
-    SV* sv_err;
     sv_undef = sv_2mortal(newSV(0));
 
     if (reply) {
         if(cbt->custom_decode) {
-            sv_reply = (cbt->custom_decode)(self, (redisReply*)reply);
+            result = (cbt->custom_decode)(self, (redisReply*)reply, cbt->collect_errors);
         } else {
-            sv_reply = Redis__Fast_decode_reply(self, (redisReply*)reply);
+            result = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
         }
+
+        if(result.result == NULL) result.result = sv_undef;
+        if(result.error == NULL) result.error = sv_undef;
 
         {
             dSP;
@@ -304,13 +334,8 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
             SAVETMPS;
 
             PUSHMARK(SP);
-            if (((redisReply*)reply)->type == REDIS_REPLY_ERROR) {
-                PUSHs(sv_undef);
-                PUSHs(sv_reply);
-            }
-            else {
-                PUSHs(sv_reply);
-            }
+            PUSHs(result.result);
+            PUSHs(result.error);
             PUTBACK;
 
             call_sv(cbt->cb, G_DISCARD);
@@ -324,67 +349,52 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
     Safefree(cbt);
 }
 
-static SV* Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECODE custom_decode, SV* cb, int argc, const char** argv, size_t* argvlen) {
+static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECODE custom_decode, SV* cb, int argc, const char** argv, size_t* argvlen) {
+    redis_fast_reply_t ret = {NULL, NULL};
     if(cb) {
         redis_fast_async_cb_t *cbt;
         Newx(cbt, sizeof(redis_fast_async_cb_t), redis_fast_async_cb_t);
         cbt->cb = SvREFCNT_inc(cb);
         cbt->custom_decode = custom_decode;
+        cbt->collect_errors = collect_errors;
         redisAsyncCommandArgv(
             self->ac, Redis__Fast_async_reply_cb, cbt,
             argc, argv, argvlen
             );
+        ret.result = sv_2mortal(newSViv(1));
     } else {
         redis_fast_sync_cb_t cbt;
         int i, cnt = (self->reconnect == 0 ? 1 : 2);
         for(i = 0; i < cnt; i++) {
-            cbt.ret = NULL;
-            cbt.error = NULL;
+            cbt.ret.result = NULL;
+            cbt.ret.error = NULL;
             cbt.custom_decode = custom_decode;
+            cbt.collect_errors = collect_errors;
             redisAsyncCommandArgv(
                 self->ac, Redis__Fast_sync_reply_cb, &cbt,
                 argc, argv, argvlen
                 );
             _wait_all_responses(self);
-            if(cbt.ret) {
-                return cbt.ret;
-            } else {
-                Redis__Fast_reconnect(self);
-            }
-        }
-        if(!cbt.ret) {
-            int len = argvlen[0];
-            char cmd[MAX_ERROR_SIZE];
-            char error[MAX_ERROR_SIZE];
-
-            // terminate with \0
-            if(len >= MAX_ERROR_SIZE) len = MAX_ERROR_SIZE - 1;
-            memcpy(cmd, argv[0], len);
-            cmd[len] = '\0';
-
-            // format
-            snprintf(error, MAX_ERROR_SIZE, "[%s] %s, ", argv[0], cbt.error);
-            croak(error);
+            return cbt.ret;
         }
     }
-    return NULL;
+    return ret;
 }
 
-static SV* Redis__Fast_keys_custom_decode(Redis__Fast self, redisReply* reply) {
+static redis_fast_reply_t Redis__Fast_keys_custom_decode(Redis__Fast self, redisReply* reply, int collect_errors) {
     // TODO: Support redis <= 1.2.6
-    return Redis__Fast_decode_reply(self, reply);
+    return Redis__Fast_decode_reply(self, reply, collect_errors);
 }
 
-static SV* Redis__Fast_info_custom_decode(Redis__Fast self, redisReply* reply) {
-    SV* res = NULL;
+static redis_fast_reply_t Redis__Fast_info_custom_decode(Redis__Fast self, redisReply* reply, int collect_errors) {
+    redis_fast_reply_t res = {NULL, NULL};
     if(reply->type == REDIS_REPLY_STRING ||
-       reply->type == REDIS_REPLY_ERROR ||
        reply->type == REDIS_REPLY_STATUS) {
 
         HV* hv = (HV*)sv_2mortal((SV*)newHV());
         char* str = reply->str;
         size_t len = reply->len;
-        res = newRV_inc((SV*)hv);
+        res.result = newRV_inc((SV*)hv);
 
         while(len != 0) {
             const char* line = (char*)memchr(str, '\r', len);
@@ -414,7 +424,7 @@ static SV* Redis__Fast_info_custom_decode(Redis__Fast self, redisReply* reply) {
             }
         }
     } else {
-        res = Redis__Fast_decode_reply(self, reply);
+        res = Redis__Fast_decode_reply(self, reply, collect_errors);
     }
 
     return res;
@@ -587,12 +597,12 @@ CODE:
 SV*
 __std_cmd(Redis::Fast self, ...)
 PREINIT:
-    SV* ret;
+    redis_fast_reply_t ret;
     SV* cb;
     char** argv;
     size_t* argvlen;
     STRLEN len;
-    int argc, i;
+    int argc, i, collect_errors;
 CODE:
 {
     Redis__Fast_reconnect(self);
@@ -616,13 +626,14 @@ CODE:
         argvlen[i] = len;
     }
 
-    ret = Redis__Fast_run_cmd(self, 0, NULL, cb, argc, (const char**)argv, argvlen);
-    if(ret) {
-        ST(0) = ret;
-        XSRETURN(1);
-    } else {
-        XSRETURN(0);
-    }
+    collect_errors = 0;
+    if(cb && argvlen[0] == 4 && memcmp(argv[0], "EXEC", 4) == 0)
+        collect_errors = 1;
+
+    ret = Redis__Fast_run_cmd(self, collect_errors, NULL, cb, argc, (const char**)argv, argvlen);
+    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
+    ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
+    XSRETURN(2);
 
     Safefree(argv);
     Safefree(argvlen);
@@ -636,13 +647,14 @@ PREINIT:
 CODE:
 {
     if(self->ac) {
-        cbt.ret = NULL;
+        cbt.ret.result = NULL;
+        cbt.ret.error = NULL;
         cbt.custom_decode = NULL;
         redisAsyncCommand(
             self->ac, Redis__Fast_sync_reply_cb, &cbt, "PING"
             );
         _wait_all_responses(self);
-        ST(0) = cbt.ret;
+        ST(0) = cbt.ret.result;
         XSRETURN(1);
     } else {
         XSRETURN(0);
@@ -657,14 +669,15 @@ PREINIT:
 CODE:
 {
     if(self->ac) {
-        cbt.ret = NULL;
+        cbt.ret.result = NULL;
+        cbt.ret.error = NULL;
         cbt.custom_decode = NULL;
         redisAsyncCommand(
             self->ac, Redis__Fast_sync_reply_cb, &cbt, "QUIT"
             );
         redisAsyncDisconnect(self->ac);
         _wait_all_responses(self);
-        ST(0) = cbt.ret;
+        ST(0) = cbt.ret.result;
         XSRETURN(1);
     } else {
         XSRETURN(0);
@@ -693,7 +706,7 @@ CODE:
 SV*
 __keys(Redis::Fast self, ...)
 PREINIT:
-    SV* ret;
+    redis_fast_reply_t ret;
     SV* cb;
     char** argv;
     size_t* argvlen;
@@ -725,12 +738,9 @@ CODE:
     }
 
     ret = Redis__Fast_run_cmd(self, 0, Redis__Fast_keys_custom_decode, cb, argc, (const char**)argv, argvlen);
-    if(ret) {
-        ST(0) = ret;
-        XSRETURN(1);
-    } else {
-        XSRETURN(0);
-    }
+    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
+    ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
+    XSRETURN(2);
 
     Safefree(argv);
     Safefree(argvlen);
@@ -740,7 +750,7 @@ CODE:
 SV*
 info(Redis::Fast self, ...)
 PREINIT:
-    SV* ret;
+    redis_fast_reply_t ret;
     SV* cb;
     char** argv;
     size_t* argvlen;
@@ -772,12 +782,8 @@ CODE:
     }
 
     ret = Redis__Fast_run_cmd(self, 0, Redis__Fast_info_custom_decode, cb, argc, (const char**)argv, argvlen);
-    if(ret) {
-        ST(0) = ret;
-        XSRETURN(1);
-    } else {
-        XSRETURN(0);
-    }
+    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
+    XSRETURN(1);
 
     Safefree(argv);
     Safefree(argvlen);

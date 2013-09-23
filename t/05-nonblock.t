@@ -2,7 +2,7 @@
 
 use warnings;
 use strict;
-use Test::More;
+use Test::More skip_all => 'not needed, tested by hiredis';
 use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;

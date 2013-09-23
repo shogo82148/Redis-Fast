@@ -95,20 +95,26 @@ r(['*-1'] => sub {
 });
 
 
-## TODO: Multi-bulk responses with nested error
-#r('*3', '$5', 'Redis', '-you must die!!', ':42');
-#like(
-#  exception { $r->__read_response('cmd') },
-#  qr/\[cmd\] you must die!!/,
-#  'Nested errors must usually throw exceptions'
-#);
+## Multi-bulk responses with nested error
+r(['*3', '$5', 'Redis', '-you must die!!', ':42'] => sub {
+      my $r = shift;
+      like(
+          exception { $r->get('hoge') },
+          qr/\[get\] you must die!!/,
+          'Nested errors must usually throw exceptions'
+      );
+});
 
-#r('*3', '$5', 'Redis', '-you must die!!', ':42');
-#is_deeply(
-#  [$r->__read_response('cmd', 1)],
-#  [[['Redis', undef], [undef, 'you must die!!'], [42, undef]], undef,],
-#  'Nested errors must be collected in collect-errors mode'
-#);
-
+r(['*3', '$5', 'Redis', '-you must die!!', ':42'] => sub {
+      my $r = shift;
+      my $result;
+      $r->exec('hoge', sub { $result = [@_] });
+      $r->wait_all_responses;
+      is_deeply(
+          $result,
+          [[['Redis', undef], [undef, 'you must die!!'], [42, undef]], undef,],
+          'Nested errors must be collected in collect-errors mode'
+      );
+});
 
 done_testing();

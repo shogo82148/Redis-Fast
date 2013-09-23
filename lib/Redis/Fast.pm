@@ -104,8 +104,8 @@ sub AUTOLOAD {
 
   my $method = sub {
       my $self = shift;
-      my $ret;
-      $ret = $self->__std_cmd($command, @_);
+      my ($ret, $error) = $self->__std_cmd(uc $command, @_);
+      confess "[$command] $error, " if defined $error;
       return (wantarray && ref $ret eq 'ARRAY') ? @$ret : $ret;
   };
 
@@ -133,40 +133,13 @@ sub __with_reconnect {
   );
 }
 
-sub __run_cmd {
-  my ($self, $command, $collect_errors, $custom_decode, $cb, @args) = @_;
-
-  my $ret;
-  my $wrapper = $cb && $custom_decode
-    ? sub {
-    my ($reply, $error) = @_;
-    $cb->(scalar $custom_decode->($reply), $error);
-    }
-    : $cb || sub {
-    my ($reply, $error) = @_;
-    confess "[$command] $error, " if defined $error;
-    $ret = $reply;
-    };
-
-  $self->__send_command($command, @args);
-  push @{ $self->{queue} }, [$command, $wrapper, $collect_errors];
-
-  return 1 if $cb;
-
-  $self->wait_all_responses;
-  return
-      $custom_decode ? $custom_decode->($ret, !wantarray)
-    : wantarray && ref $ret eq 'ARRAY' ? @$ret
-    :                                    $ret;
-}
-
 
 ### Commands with extra logic
 
 sub keys {
     my $self = shift;
-    my $ret;
-    $ret = $self->__keys(@_);
+    my ($ret, $error) = $self->__keys(@_);
+    confess "[keys] $error, " if defined $error;
     return $ret unless ref $ret eq 'ARRAY';
     return @$ret;
 }
