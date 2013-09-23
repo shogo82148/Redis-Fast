@@ -482,6 +482,14 @@ CODE:
 }
 
 
+int
+__sock(Redis::Fast self)
+CODE:
+{
+    RETVAL = self->ac ? self->ac->c.fd : 0;
+}
+
+
 void
 DESTROY(Redis::Fast self);
 CODE:

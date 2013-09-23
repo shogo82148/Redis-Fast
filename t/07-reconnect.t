@@ -70,13 +70,13 @@ subtest 'KEYS commands with extra logic triggers reconnect' => sub {
 subtest "Bad commands don't trigger reconnect" => sub {
   ok(my $r = Redis::Fast->new(reconnect => 2, server => $srv), 'connected to our test redis-server');
 
-  my $prev_sock = "$r->{sock}";
+  my $prev_sock = $r->__sock;
   like(
     exception { $r->set(bad => reconnect => 1) },
     qr{ERR wrong number of arguments for 'set' command|\[set\] ERR syntax error},
     'Bad commands still die',
   );
-  is("$r->{sock}", $prev_sock, "... and don't trigger a reconnect");
+  is($r->__sock, $prev_sock, "... and don't trigger a reconnect");
 };
 
 
