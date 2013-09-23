@@ -12,12 +12,14 @@
 #include <stdio.h>
 #include <sys/select.h>
 
+#define MAX_ERROR_SIZE 256
 
 typedef struct redis_fast_s {
     redisAsyncContext* ac;
     char* hostname;
     int port;
     char* path;
+    char* error;
     int reconnect;
     int every;
     int is_utf8;
@@ -252,14 +254,21 @@ static SV* Redis__Fast_decode_reply(Redis__Fast self, redisReply* reply) {
 static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_sync_cb_t *cbt = (redis_fast_sync_cb_t*)privdata;
-    if(reply) {
+    if(!reply) {
+        cbt->error = c->errstr;
+    } else if(((redisReply*)reply)->type == REDIS_REPLY_ERROR) {
+        char* str = ((redisReply*)reply)->str;
+        size_t len = ((redisReply*)reply)->len;
+        if(len > MAX_ERROR_SIZE - 1) len = MAX_ERROR_SIZE - 1;
+        strncpy(self->error, str, len);
+        self->error[len] = '\0';
+        cbt->error = self->error;
+    } else {
         if(cbt->custom_decode) {
             cbt->ret = (cbt->custom_decode)(self, (redisReply*)reply);
         } else {
             cbt->ret = Redis__Fast_decode_reply(self, (redisReply*)reply);
         }
-    } else {
-        cbt->error = c->errstr;
     }
 }
 
@@ -334,7 +343,18 @@ static SV* Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECO
             }
         }
         if(!cbt.ret) {
-            croak(cbt.error);
+            int len = argvlen[0];
+            char cmd[MAX_ERROR_SIZE];
+            char error[MAX_ERROR_SIZE];
+
+            // terminate with \0
+            if(len >= MAX_ERROR_SIZE) len = MAX_ERROR_SIZE - 1;
+            memcpy(cmd, argv[0], len);
+            cmd[len] = '\0';
+
+            // format
+            snprintf(error, MAX_ERROR_SIZE, "[%s] %s, ", argv[0], cbt.error);
+            croak(error);
         }
     }
     return NULL;
@@ -399,6 +419,7 @@ CODE:
     PERL_UNUSED_VAR(cls);
     Newxz(RETVAL, sizeof(redis_fast_t), redis_fast_t);
     RETVAL->ac = NULL;
+    RETVAL->error = (char*)malloc(MAX_ERROR_SIZE);
 }
 OUTPUT:
     RETVAL
@@ -468,6 +489,11 @@ CODE:
     if(self->path) {
         free(self->path);
         self->path = NULL;
+    }
+
+    if(self->error) {
+        free(self->error);
+        self->error = NULL;
     }
 
     Safefree(self);
