@@ -58,21 +58,24 @@ sub new {
     }
   }
 
-  #$self->{password}   = $args{password}   if $args{password};
-  #$self->{on_connect} = $args{on_connect} if $args{on_connect};
-
-  #if (my $name = $args{name}) {
-  #  my $on_conn = $self->{on_connect};
-  #  $self->{on_connect} = sub {
-  #    my ($redis) = @_;
-  #    try {
-  #      my $n = $name;
-  #      $n = $n->($redis) if ref($n) eq 'CODE';
-  #      $redis->client_setname($n) if defined $n;
-  #    };
-  #    $on_conn->(@_) if $on_conn;
-  #    }
-  #}
+  my $on_conn = $args{on_connect};
+  my $password = $args{password};
+  my $name = $args{name};
+  $self->__set_on_connect(
+      sub {
+          try {
+              $self->auth($password);
+          } catch {
+              confess("Redis server refused password");
+          };
+          try {
+              my $n = $name;
+              $n = $n->($self) if ref($n) eq 'CODE';
+              $self->client_setname($n) if defined $n;
+          };
+          $on_conn->($self) if $on_conn;
+      }
+  );
 
   if ($args{sock}) {
     $self->__connection_info_unix($args{sock});

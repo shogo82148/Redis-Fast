@@ -24,6 +24,7 @@ typedef struct redis_fast_s {
     int every;
     int is_utf8;
     int need_recoonect;
+    SV* on_connect;
 } redis_fast_t, *Redis__Fast;
 
 typedef struct redis_fast_reply_s {
@@ -137,8 +138,20 @@ static void Redis__Fast_connect_cb(redisAsyncContext* c, int status) {
         // Redis context will close automatically
         self->ac = NULL;
     } else {
-        // TODO: send password
-        // TODO: call on_connect callback
+        if(self->on_connect){
+            dSP;
+
+            ENTER;
+            SAVETMPS;
+
+            PUSHMARK(SP);
+            PUTBACK;
+
+            call_sv(self->on_connect, G_DISCARD);
+
+            FREETMPS;
+            LEAVE;
+        }
     }
 }
 
@@ -444,6 +457,7 @@ CODE:
     Newxz(RETVAL, sizeof(redis_fast_t), redis_fast_t);
     RETVAL->ac = NULL;
     RETVAL->error = (char*)malloc(MAX_ERROR_SIZE);
+    RETVAL->on_connect = NULL;
 }
 OUTPUT:
     RETVAL
@@ -503,6 +517,12 @@ CODE:
     RETVAL = self->ac ? self->ac->c.fd : 0;
 }
 
+void
+__set_on_connect(Redis::Fast self, SV* func)
+CODE:
+{
+    self->on_connect = SvREFCNT_inc(func);
+}
 
 void
 DESTROY(Redis::Fast self);
@@ -526,6 +546,11 @@ CODE:
     if(self->error) {
         free(self->error);
         self->error = NULL;
+    }
+
+    if(self->on_connect) {
+        SvREFCNT_dec(self->on_connect);
+        self->on_connect = NULL;
     }
 
     Safefree(self);
