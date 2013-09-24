@@ -101,10 +101,11 @@ our $AUTOLOAD;
 sub AUTOLOAD {
   my $command = $AUTOLOAD;
   $command =~ s/.*://;
+  my @command = split /_/, uc $command;
 
   my $method = sub {
       my $self = shift;
-      my ($ret, $error) = $self->__std_cmd(uc $command, @_);
+      my ($ret, $error) = $self->__std_cmd(@command, @_);
       confess "[$command] $error, " if defined $error;
       return (wantarray && ref $ret eq 'ARRAY') ? @$ret : $ret;
   };
