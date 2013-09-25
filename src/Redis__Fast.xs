@@ -25,6 +25,7 @@ typedef struct redis_fast_s {
     int is_utf8;
     int need_recoonect;
     SV* on_connect;
+    SV* data;
 } redis_fast_t, *Redis__Fast;
 
 typedef struct redis_fast_reply_s {
@@ -449,15 +450,17 @@ static redis_fast_reply_t Redis__Fast_info_custom_decode(Redis__Fast self, redis
 
 MODULE = Redis::Fast		PACKAGE = Redis::Fast
 
-Redis::Fast
+SV*
 _new(char* cls);
+PREINIT:
+redis_fast_t* self;
 CODE:
 {
-    PERL_UNUSED_VAR(cls);
-    Newxz(RETVAL, sizeof(redis_fast_t), redis_fast_t);
-    RETVAL->ac = NULL;
-    RETVAL->error = (char*)malloc(MAX_ERROR_SIZE);
-    RETVAL->on_connect = NULL;
+    Newxz(self, sizeof(redis_fast_t), redis_fast_t);
+    self->error = (char*)malloc(MAX_ERROR_SIZE);
+    ST(0) = sv_newmortal();
+    sv_setref_pv(ST(0), cls, (void*)self);
+    XSRETURN(1);
 }
 OUTPUT:
     RETVAL
@@ -525,6 +528,22 @@ CODE:
 }
 
 void
+__set_data(Redis::Fast self, SV* data)
+CODE:
+{
+    self->data = SvREFCNT_inc(data);
+}
+
+void
+__get_data(Redis::Fast self)
+CODE:
+{
+    ST(0) = self->data;
+    XSRETURN(1);
+}
+
+
+void
 DESTROY(Redis::Fast self);
 CODE:
 {
@@ -551,6 +570,11 @@ CODE:
     if(self->on_connect) {
         SvREFCNT_dec(self->on_connect);
         self->on_connect = NULL;
+    }
+
+    if(self->data) {
+        SvREFCNT_dec(self->data);
+        self->data = NULL;
     }
 
     Safefree(self);

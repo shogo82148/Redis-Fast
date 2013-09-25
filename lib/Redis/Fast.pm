@@ -64,7 +64,7 @@ sub new {
   $self->__set_on_connect(
       sub {
           try {
-              $self->auth($password);
+              $self->auth($password) if defined $password;
           } catch {
               confess("Redis server refused password");
           };
@@ -76,6 +76,7 @@ sub new {
           $on_conn->($self) if $on_conn;
       }
   );
+  $self->__set_data(undef);
 
   if ($args{sock}) {
     $self->__connection_info_unix($args{sock});
