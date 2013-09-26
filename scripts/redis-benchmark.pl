@@ -4,13 +4,13 @@ use warnings;
 use strict;
 use Benchmark qw/:all/;
 use lib 'lib';
-use Redis;
-use Redis::Hash;
+use Redis::Fast;
+use Redis::Fast::Hash;
 
-my $r = Redis->new;
+my $r = Redis::Fast->new;
 
 my %hash;
-tie %hash, 'Redis::Hash', 'hash';
+tie %hash, 'Redis::Fast::Hash', 'hash';
 
 my $i = 0;
 
