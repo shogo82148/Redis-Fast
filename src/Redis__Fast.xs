@@ -190,6 +190,7 @@ static void Redis__Fast_connect_cb(redisAsyncContext* c, int status) {
 
 static void Redis__Fast_disconnect_cb(redisAsyncContext* c, int status) {
     Redis__Fast self = (Redis__Fast)c->data;
+    PERL_UNUSED_VAR(status);
     self->ac = NULL;
 }
 
@@ -401,13 +402,13 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_subscribe_cb_t *cbt = (redis_fast_subscribe_cb_t*)privdata;
     SV* sv_undef;
-    int i;
     redisReply* r = (redisReply*)reply;
     sv_undef = sv_2mortal(newSV(0));
 
     if (r) {
         char* stype = r->element[0]->str;
         int pvariant = (tolower(stype[0]) == 'p') ? 1 : 0;
+        redis_fast_reply_t res = Redis__Fast_decode_reply(self, r, 0);
 
         if (strcasecmp(stype+pvariant,"subscribe") == 0) {
             DEBUG_MSG("%s %s %d", r->element[0]->str, r->element[1]->str, r->element[2]->integer);
@@ -420,7 +421,6 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
             DEBUG_MSG("%s %s", r->element[0]->str, r->element[1]->str);
             self->proccess_sub_count++;
         }
-        redis_fast_reply_t res = Redis__Fast_decode_reply(self, r, 0);
         {
             dSP;
 
@@ -736,7 +736,7 @@ CODE:
 }
 
 
-SV*
+void
 __std_cmd(Redis::Fast self, ...)
 PREINIT:
     redis_fast_reply_t ret;
@@ -890,7 +890,7 @@ CODE:
 }
 
 
-SV*
+void
 __info(Redis::Fast self, ...)
 PREINIT:
     redis_fast_reply_t ret;
@@ -937,7 +937,6 @@ CODE:
 void
 __send_subscription_cmd(Redis::Fast self, ...)
 PREINIT:
-    redis_fast_reply_t ret;
     SV* cb;
     char** argv;
     size_t* argvlen;
