@@ -1,4 +1,4 @@
-package Redis::List;
+package Redis::Fast::List;
 
 # ABSTRACT: tie Perl arrays to Redis lists
 # VERSION
@@ -6,79 +6,79 @@ package Redis::List;
 
 use strict;
 use warnings;
-use base qw/Redis Tie::Array/;
+use base qw/Redis::Fast Tie::Array/;
 
 
 sub TIEARRAY {
   my ($class, $list, @rest) = @_;
   my $self = $class->new(@rest);
 
-  $self->{list} = $list;
+  $self->__set_data($list);
 
   return $self;
 }
 
 sub FETCH {
   my ($self, $index) = @_;
-  $self->lindex($self->{list}, $index);
+  $self->lindex($self->__get_data, $index);
 }
 
 sub FETCHSIZE {
   my ($self) = @_;
-  $self->llen($self->{list});
+  $self->llen($self->__get_data);
 }
 
 sub STORE {
   my ($self, $index, $value) = @_;
-  $self->lset($self->{list}, $index, $value);
+  $self->lset($self->__get_data, $index, $value);
 }
 
 sub STORESIZE {
   my ($self, $count) = @_;
-  $self->ltrim($self->{list}, 0, $count);
+  $self->ltrim($self->__get_data, 0, $count);
 
 #		if $count > $self->FETCHSIZE;
 }
 
 sub CLEAR {
   my ($self) = @_;
-  $self->del($self->{list});
+  $self->del($self->__get_data);
 }
 
 sub PUSH {
   my $self = shift;
-  my $list = $self->{list};
+  my $list = $self->__get_data;
 
   $self->rpush($list, $_) for @_;
 }
 
 sub POP {
   my $self = shift;
-  $self->rpop($self->{list});
+  $self->rpop($self->__get_data);
 }
 
 sub SHIFT {
   my ($self) = @_;
-  $self->lpop($self->{list});
+  $self->lpop($self->__get_data);
 }
 
 sub UNSHIFT {
   my $self = shift;
-  my $list = $self->{list};
+  my $list = $self->__get_data;
 
   $self->lpush($list, $_) for @_;
 }
 
 sub SPLICE {
   my ($self, $offset, $length) = @_;
-  $self->lrange($self->{list}, $offset, $length);
+  $self->lrange($self->__get_data, $offset, $length);
 
   # FIXME rest of @_ ?
 }
 
 sub EXTEND {
   my ($self, $count) = @_;
-  $self->rpush($self->{list}, '') for ($self->FETCHSIZE .. ($count - 1));
+  $self->rpush($self->__get_data, '') for ($self->FETCHSIZE .. ($count - 1));
 }
 
 sub DESTROY { $_[0]->quit }

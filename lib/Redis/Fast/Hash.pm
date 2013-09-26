@@ -1,4 +1,4 @@
-package Redis::Hash;
+package Redis::Fast::Hash;
 
 # ABSTRACT: tie Perl hashes to Redis hashes
 # VERSION
@@ -7,59 +7,60 @@ package Redis::Hash;
 use strict;
 use warnings;
 use Tie::Hash;
-use base qw/Redis Tie::StdHash/;
+use base qw/Redis::Fast Tie::StdHash/;
 
 
 sub TIEHASH {
   my ($class, $prefix, @rest) = @_;
   my $self = $class->new(@rest);
 
-  $self->{prefix} = $prefix ? "$prefix:" : '';
+  $self->__set_data({});
+  $self->__get_data->{prefix} = $prefix ? "$prefix:" : '';
 
   return $self;
 }
 
 sub STORE {
   my ($self, $key, $value) = @_;
-  $self->set($self->{prefix} . $key, $value);
+  $self->set($self->__get_data->{prefix} . $key, $value);
 }
 
 sub FETCH {
   my ($self, $key) = @_;
-  $self->get($self->{prefix} . $key);
+  $self->get($self->__get_data->{prefix} . $key);
 }
 
 sub FIRSTKEY {
   my $self = shift;
-  $self->{prefix_keys} = [$self->keys($self->{prefix} . '*')];
+  $self->__get_data->{prefix_keys} = [$self->keys($self->__get_data->{prefix} . '*')];
   $self->NEXTKEY;
 }
 
 sub NEXTKEY {
   my $self = shift;
 
-  my $key = shift @{ $self->{prefix_keys} };
+  my $key = shift @{ $self->__get_data->{prefix_keys} };
   return unless defined $key;
 
-  my $p = $self->{prefix};
+  my $p = $self->__get_data->{prefix};
   $key =~ s/^$p// if $p;
   return $key;
 }
 
 sub EXISTS {
   my ($self, $key) = @_;
-  $self->exists($self->{prefix} . $key);
+  $self->exists($self->__get_data->{prefix} . $key);
 }
 
 sub DELETE {
   my ($self, $key) = @_;
-  $self->del($self->{prefix} . $key);
+  $self->del($self->__get_data->{prefix} . $key);
 }
 
 sub CLEAR {
   my ($self) = @_;
-  $self->del($_) for $self->keys($self->{prefix} . '*');
-  $self->{prefix_keys} = [];
+  $self->del($_) for $self->keys($self->__get_data->{prefix} . '*');
+  $self->__get_data->{prefix_keys} = [];
 }
 
 
