@@ -37,12 +37,12 @@ sub new {
 
   ## default to lax utf8
   my $encoding = exists $args{encoding} ? $args{encoding} : 'utf8';
-  if($encoding eq 'utf8') {
-      $self->__set_utf8(1);
-  } elsif(!$encoding) {
-      $self->__set_utf8(0);
+  if(!$encoding) {
+    $self->__set_utf8(0);
+  } elsif($encoding eq 'utf8') {
+    $self->__set_utf8(1);
   } else {
-      die "encoding $encoding does not support";
+    die "encoding $encoding does not support";
   }
 
   ## Deal with REDIS_SERVER ENV
