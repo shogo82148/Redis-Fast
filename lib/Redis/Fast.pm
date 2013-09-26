@@ -76,7 +76,9 @@ sub new {
           $on_conn->($self) if $on_conn;
       }
   );
-  $self->__set_data(undef);
+  $self->__set_data({
+      subscribers => {},
+  });
 
   if ($args{sock}) {
     $self->__connection_info_unix($args{sock});
@@ -96,8 +98,6 @@ sub new {
   return $self;
 }
 
-sub is_subscriber { }
-
 
 ### Deal with common, general case, Redis commands
 our $AUTOLOAD;
@@ -109,6 +109,7 @@ sub AUTOLOAD {
 
   my $method = sub {
       my $self = shift;
+      $self->__is_valid_command($command);
       my ($ret, $error) = $self->__std_cmd(@command, @_);
       confess "[$command] $error, " if defined $error;
       return (wantarray && ref $ret eq 'ARRAY') ? @$ret : $ret;
@@ -124,18 +125,7 @@ sub AUTOLOAD {
 sub __with_reconnect {
   my ($self, $cb) = @_;
 
-  ## Fast path, no reconnect
-  return $cb->() unless $self->{reconnect};
-
-  return &try(
-    $cb,
-    catch {
-      die $_ unless ref($_) eq 'Redis::X::Reconnect';
-
-      $self->__connect;
-      $cb->();
-    }
-  );
+  confess "not implemented";
 }
 
 
@@ -143,36 +133,41 @@ sub __with_reconnect {
 
 sub keys {
     my $self = shift;
+    $self->__is_valid_command('keys');
     my ($ret, $error) = $self->__keys(@_);
     confess "[keys] $error, " if defined $error;
     return $ret unless ref $ret eq 'ARRAY';
     return @$ret;
 }
 
-### PubSub
-sub wait_for_messages {
-  my ($self, $timeout) = @_;
-  my $sock = $self->{sock};
+sub ping {
+    my $self = shift;
+    $self->__is_valid_command('ping');
+    my ($ret, $error) = $self->__ping;
+    confess "[keys] $error, " if defined $error;
+    return $ret unless ref $ret eq 'ARRAY';
+    return @$ret;
+}
 
-  my $s = IO::Select->new;
-  $s->add($sock);
+sub info {
+    my $self = shift;
+    $self->__is_valid_command('info');
+    my ($ret, $error) = $self->__info(@_);
+    confess "[keys] $error, " if defined $error;
+    return $ret unless ref $ret eq 'ARRAY';
+    return @$ret;
+}
 
-  my $count = 0;
-MESSAGE:
-  while ($s->can_read($timeout)) {
-    while (1) {
-      my $has_stuff = __try_read_sock($sock);
-      last MESSAGE unless defined $has_stuff;    ## Stop right now if EOF
-      last unless $has_stuff;                    ## back to select until timeout
+sub quit {
+    my $self = shift;
+    $self->__is_valid_command('quit');
+    $self->__quit(@_);
+}
 
-      my ($reply, $error) = $self->__read_response('WAIT_FOR_MESSAGES');
-      confess "[WAIT_FOR_MESSAGES] $error, " if defined $error;
-      $self->__process_pubsub_msg($reply);
-      $count++;
-    }
-  }
-
-  return $count;
+sub shutdown {
+    my $self = shift;
+    $self->__is_valid_command('shutdown');
+    $self->__shutdown(@_);
 }
 
 sub __subscription_cmd {
@@ -188,21 +183,20 @@ sub __subscription_cmd {
   $self->wait_all_responses;
 
   my @subs = @_;
-  $self->__with_reconnect(
-    sub {
-      $self->__throw_reconnect('Not connected to any server')
-        unless $self->{sock};
-
-      @subs = $self->__process_unsubscribe_requests($cb, $pr, @subs)
-        if $unsub;
-      return unless @subs;
-
-      $self->__send_command($command, @subs);
-
-      my %cbs = map { ("${pr}message:$_" => $cb) } @subs;
-      return $self->__process_subscription_changes($command, \%cbs);
-    }
-  );
+  @subs = $self->__process_unsubscribe_requests($cb, $pr, @subs)
+      if $unsub;
+  my %cbs = map { ("${pr}message:$_" => $cb) } @subs;
+  if(@subs) {
+      return $self->__send_subscription_cmd(
+          $command,
+          @subs,
+          sub {
+              return $self->__process_subscription_changes($command, \%cbs, @_);
+          },
+      );
+  } else {
+      return 0;
+  }
 }
 
 sub subscribe    { shift->__subscription_cmd('',  0, subscribe    => @_) }
@@ -212,48 +206,43 @@ sub punsubscribe { shift->__subscription_cmd('p', 1, punsubscribe => @_) }
 
 sub __process_unsubscribe_requests {
   my ($self, $cb, $pr, @unsubs) = @_;
-  my $subs = $self->{subscribers};
+  my $subs = $self->__get_data->{subscribers};
 
   my @subs_to_unsubscribe;
   for my $sub (@unsubs) {
     my $key = "${pr}message:$sub";
+    next unless $subs->{$key} && @{ $subs->{$key} };
     my $cbs = $subs->{$key} = [grep { $_ ne $cb } @{ $subs->{$key} }];
     next if @$cbs;
 
     delete $subs->{$key};
     push @subs_to_unsubscribe, $sub;
   }
-
   return @subs_to_unsubscribe;
 }
 
 sub __process_subscription_changes {
-  my ($self, $cmd, $expected) = @_;
-  my $subs = $self->{subscribers};
+  my ($self, $cmd, $expected, $m, $error) = @_;
+  my $subs = $self->__get_data->{subscribers};
 
-  while (%$expected) {
-    my ($m, $error) = $self->__read_response($cmd);
-    confess "[$cmd] $error, " if defined $error;
+  confess "[$cmd] $error, " if defined $error;
 
-    ## Deal with pending PUBLISH'ed messages
-    if ($m->[0] =~ /^p?message$/) {
-      $self->__process_pubsub_msg($m);
-      next;
-    }
-
-    my ($key, $unsub) = $m->[0] =~ m/^(p)?(un)?subscribe$/;
-    $key .= "message:$m->[1]";
-    my $cb = delete $expected->{$key};
-
-    push @{ $subs->{$key} }, $cb unless $unsub;
-
-    $self->{is_subscriber} = $m->[2];
+  ## Deal with pending PUBLISH'ed messages
+  if ($m->[0] =~ /^p?message$/) {
+    $self->__process_pubsub_msg($m);
+    return ;
   }
+
+  my ($key, $unsub) = $m->[0] =~ m/^(p)?(un)?subscribe$/;
+  $key .= "message:$m->[1]";
+  my $cb = delete $expected->{$key};
+
+  push @{ $subs->{$key} }, $cb unless $unsub;
 }
 
 sub __process_pubsub_msg {
   my ($self, $m) = @_;
-  my $subs = $self->{subscribers};
+  my $subs = $self->__get_data->{subscribers};
 
   my $sub   = $m->[1];
   my $cbid  = "$m->[0]:$sub";
@@ -262,7 +251,7 @@ sub __process_pubsub_msg {
 
   if (!exists $subs->{$cbid}) {
     warn "Message for topic '$topic' ($cbid) without expected callback, ";
-    return;
+    return 0;
   }
 
   $_->($data, $topic, $sub) for @{ $subs->{$cbid} };
@@ -271,114 +260,12 @@ sub __process_pubsub_msg {
 
 }
 
-
-### Mode validation
 sub __is_valid_command {
   my ($self, $cmd) = @_;
 
-#  confess("Cannot use command '$cmd' while in SUBSCRIBE mode, ")
-#    if $self->{is_subscriber};
+  confess("Cannot use command '$cmd' while in SUBSCRIBE mode, ")
+    if $self->is_subscriber;
 }
-
-
-#
-# The reason for this code:
-#
-# IO::Select and buffered reads like <$sock> and read() dont mix
-# For example, if I receive two MESSAGE messages (from Redis PubSub),
-# the first read for the first message will probably empty to socket
-# buffer and move the data to the perl IO buffer.
-#
-# This means that IO::Select->can_read will return false (after all
-# the socket buffer is empty) but from the application point of view
-# there is still data to be read and process
-#
-# Hence this code. We try to do a non-blocking read() of 1 byte, and if
-# we succeed, we put it back and signal "yes, Virginia, there is still
-# stuff out there"
-#
-# We could just use sysread and leave the socket buffer with the second
-# message, and then use IO::Select as intended, and previous versions of
-# this code did that (check the git history for this file), but
-# performance suffers, about 20/30% slower, mostly because we do a lot
-# of "read one line", where <$sock> beats the crap of anything you can
-# write on Perl-land.
-#
-sub __try_read_sock {
-  my $sock = shift;
-  my $data = '';
-
-  __fh_nonblocking($sock, 1);
-
-  ## Lots of problems with Windows here. This is a temporary fix until I
-  ## figure out what is happening there. It looks like the wrong fix
-  ## because we should not mix sysread (unbuffered I/O) with ungetc()
-  ## below (buffered I/O), so I do expect to revert this soon.
-  ## Call it a run through the CPAN Testers Gautlet fix. If I had to
-  ## guess (and until my Windows box has a new power supply I do have to
-  ## guess), I would say that the problems lies with the call
-  ## __fh_nonblocking(), where on Windows we don't end up with a non-
-  ## blocking socket.
-  ## See
-  ##  * https://github.com/melo/perl-redis/issues/20
-  ##  * https://github.com/melo/perl-redis/pull/21
-  my $len;
-  if (WIN32) {
-    $len = sysread($sock, $data, 1);
-  }
-  else {
-    $len = read($sock, $data, 1);
-  }
-  my $err = 0 + $!;
-  __fh_nonblocking($sock, 0);
-
-  if (defined($len)) {
-    ## Have stuff
-    if ($len > 0) {
-      $sock->ungetc(ord($data));
-      return 1;
-    }
-    ## EOF according to the docs
-    elsif ($len == 0) {
-      return;
-    }
-    else {
-      confess("read()/sysread() are really bonkers on $^O, return negative values ($len)");
-    }
-  }
-
-  ## Keep going if nothing there, but socket is alive
-  return 0 if $err and ($err == EWOULDBLOCK or $err == EAGAIN or $err == EINTR);
-
-  ## No errno, but result is undef?? This happens sometimes on my tests
-  ## when the server timesout the client. I traced the system calls and
-  ## I see the read() system call return 0 for EOF, but on this side of
-  ## perl, we get undef... We should see the 0 return code for EOF, I
-  ## suspect the fact that we are in non-blocking mode is the culprit
-  return if $err == 0;
-
-  ## For everything else, there is Mastercard...
-  confess("Unexpected error condition $err/$^O, please report this as a bug");
-}
-
-
-### Copied from AnyEvent::Util
-BEGIN {
-  *__fh_nonblocking = (WIN32)
-    ? sub($$) { ioctl $_[0], 0x8004667e, pack "L", $_[1]; }    # FIONBIO
-    : sub($$) { fcntl $_[0], F_SETFL, $_[1] ? O_NONBLOCK : 0; };
-}
-
-
-##########################
-# I take exception to that
-
-sub __throw_reconnect {
-  my ($self, $m) = @_;
-  die bless(\$m, 'Redis::X::Reconnect') if $self->{reconnect};
-  die $m;
-}
-
 
 1;    # End of Redis.pm
 
