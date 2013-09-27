@@ -552,6 +552,8 @@ CODE:
 {
     RETVAL = self->reconnect = val;
 }
+OUTPUT:
+    RETVAL
 
 
 int
@@ -560,6 +562,8 @@ CODE:
 {
     RETVAL = self->reconnect;
 }
+OUTPUT:
+    RETVAL
 
 
 int
@@ -568,14 +572,18 @@ CODE:
 {
     RETVAL = self->every = val;
 }
+OUTPUT:
+    RETVAL
 
 
 int
-__get_every(Redis::Fast self, int val)
+__get_every(Redis::Fast self)
 CODE:
 {
     RETVAL = self->every;
 }
+OUTPUT:
+    RETVAL
 
 
 int
@@ -584,14 +592,18 @@ CODE:
 {
     RETVAL = self->is_utf8 = val;
 }
+OUTPUT:
+    RETVAL
 
 
 int
-__get_utf8(Redis::Fast self, int val)
+__get_utf8(Redis::Fast self)
 CODE:
 {
     RETVAL = self->is_utf8;
 }
+OUTPUT:
+    RETVAL
 
 
 int
@@ -600,6 +612,8 @@ CODE:
 {
     RETVAL = self->ac ? self->ac->c.fd : 0;
 }
+OUTPUT:
+    RETVAL
 
 void
 __set_on_connect(Redis::Fast self, SV* func)
