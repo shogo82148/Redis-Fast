@@ -85,6 +85,7 @@ sub spawn_server {
     my $redis   = Redis::Fast->new(server => $addr, reconnect => 5, every => 200);
     my $version = $redis->info->{redis_version};
     my $alive   = $$;
+    $redis->quit;
 
     my $c = sub {
       return unless $alive;

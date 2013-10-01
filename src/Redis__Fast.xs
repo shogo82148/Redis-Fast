@@ -11,6 +11,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <sys/select.h>
+#include <sys/socket.h>
 
 #define MAX_ERROR_SIZE 256
 
@@ -41,6 +42,7 @@ typedef struct redis_fast_s {
     int proccess_sub_count;
     int is_subscriber;
     int expected_subs;
+    pid_t pid;
 } redis_fast_t, *Redis__Fast;
 
 typedef struct redis_fast_reply_s {
@@ -237,6 +239,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
     }
 
     //$self->{queue} = [];
+    self->pid = getpid();
 
     if(self->reconnect == 0) {
         __build_sock(self);
@@ -448,6 +451,11 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
 
 static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECODE custom_decode, SV* cb, int argc, const char** argv, size_t* argvlen) {
     redis_fast_reply_t ret = {NULL, NULL};
+
+    if(self->pid != getpid()) {
+        Redis__Fast_connect(self);
+    }
+
     if(cb) {
         redis_fast_async_cb_t *cbt;
         Newx(cbt, sizeof(redis_fast_async_cb_t), redis_fast_async_cb_t);
@@ -614,6 +622,21 @@ CODE:
 }
 OUTPUT:
     RETVAL
+
+
+int
+__get_port(Redis::Fast self)
+CODE:
+{
+    struct sockaddr_in addr;
+    socklen_t len;
+    len = sizeof( addr );
+    getsockname( self->ac->c.fd, ( struct sockaddr *)&addr, &len );
+    RETVAL = addr.sin_port;
+}
+OUTPUT:
+    RETVAL
+
 
 void
 __set_on_connect(Redis::Fast self, SV* func)
