@@ -24,3 +24,4 @@ MYMETA.*
 /lib/Redis/Fast.c
 /lib/Redis/Fast.o
 /lib/Redis/Fast.xs
+/inc/
