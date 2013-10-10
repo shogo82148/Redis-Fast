@@ -10,22 +10,10 @@ BEGIN {
 use warnings;
 use strict;
 
-use IO::Socket::INET;
-use IO::Socket::UNIX;
-use IO::Select;
-use IO::Handle;
-use Fcntl qw( O_NONBLOCK F_SETFL );
-use Errno ();
 use Data::Dumper;
 use Carp qw/confess/;
 use Encode;
 use Try::Tiny;
-use Scalar::Util ();
-
-use constant WIN32       => $^O =~ /mswin32/i;
-use constant EWOULDBLOCK => eval {Errno::EWOULDBLOCK} || -1E9;
-use constant EAGAIN      => eval {Errno::EAGAIN} || -1E9;
-use constant EINTR       => eval {Errno::EINTR} || -1E9;
 
 
 sub new {
@@ -273,42 +261,40 @@ __END__
 
 =head1 AUTHOR
 
-Dobrica Pavlinusic
-
-Modified by Ichinose Shogo E<lt>shogo82148@gmail.comE<gt>
+Ichinose Shogo E<lt>shogo82148@gmail.comE<gt>
 
 =head1 SYNOPSIS
 
     ## Defaults to $ENV{REDIS_SERVER} or 127.0.0.1:6379
-    my $redis = Redis->new;
+    my $redis = Redis::Fast->new;
 
-    my $redis = Redis->new(server => 'redis.example.com:8080');
+    my $redis = Redis::Fast->new(server => 'redis.example.com:8080');
 
     ## Set the connection name (requires Redis 2.6.9)
-    my $redis = Redis->new(
+    my $redis = Redis::Fast->new(
       server => 'redis.example.com:8080',
       name => 'my_connection_name',
     );
     my $generation = 0;
-    my $redis = Redis->new(
+    my $redis = Redis::Fast->new(
       server => 'redis.example.com:8080',
       name => sub { "cache-$$-".++$generation },
     );
 
     ## Use UNIX domain socket
-    my $redis = Redis->new(sock => '/path/to/socket');
+    my $redis = Redis::Fast->new(sock => '/path/to/socket');
 
     ## Enable auto-reconnect
     ## Try to reconnect every 500ms up to 60 seconds until success
     ## Die if you can't after that
-    my $redis = Redis->new(reconnect => 60);
+    my $redis = Redis::Fast->new(reconnect => 60);
 
     ## Try each 100ms upto 2 seconds (every is in milisecs)
-    my $redis = Redis->new(reconnect => 2, every => 100);
+    my $redis = Redis::Fast->new(reconnect => 2, every => 100);
 
     ## Disable the automatic utf8 encoding => much more performance
     ## !!!! This will be the default after 2.000, see ENCODING below
-    my $redis = Redis->new(encoding => undef);
+    my $redis = Redis::Fast->new(encoding => undef);
 
     ## Use all the regular Redis commands, they all accept a list of
     ## arguments
@@ -361,7 +347,9 @@ Modified by Ichinose Shogo E<lt>shogo82148@gmail.comE<gt>
 
 =head1 DESCRIPTION
 
-Pure perl bindings for L<http://redis.io/>
+C<Redis::Fast> is a wrapper around Salvatore Sanfilippo's
+L<hiredis|https://github.com/antirez/hiredis> C client that
+has a same interface with C<Redis.pm>
 
 This version supports protocol 2.x (multi-bulk) or later of Redis available at
 L<https://github.com/antirez/redis/>.
