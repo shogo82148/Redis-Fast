@@ -1,10 +1,10 @@
 {
    "abstract" : "Perl binding for Redis database",
    "author" : [
-      "Dobrica Pavlinusic"
+      "Ichinose Shogo <shogo82148@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v0.6.7, CPAN::Meta::Converter version 2.132140",
+   "generated_by" : "Minilla/v0.5.3, CPAN::Meta::Converter version 2.132140",
    "license" : [
       "unknown"
    ],
@@ -51,19 +51,21 @@
          "requires" : {
             "File::Temp" : "0",
             "Test::Deep" : "0",
-            "Test::More" : "0.98"
+            "Test::More" : "0.98",
+            "Test::TCP" : "0"
          }
       }
    },
    "release_status" : "unstable",
    "resources" : {
       "bugtracker" : {
-         "web" : "https://github.com/melo/perl-redis/issues"
+         "web" : "https://github.com/shogo82148/Redis-Fast/issues"
       },
-      "homepage" : "https://github.com/melo/perl-redis",
+      "homepage" : "https://github.com/shogo82148/Redis-Fast",
       "repository" : {
-         "url" : "https://github.com/melo/perl-redis.git",
-         "web" : "https://github.com/melo/perl-redis"
+         "type" : "git",
+         "url" : "git://github.com/shogo82148/Redis-Fast.git",
+         "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
    "version" : "0.01",
@@ -82,7 +84,6 @@
       "Gregor Herrmann <gregoa@debian.org>",
       "Volker Kroll <vkroll@allein-zu-haus.de>",
       "Pedro Melo <melo@simplicidade.org>",
-      "perlpong <calyx238@gmail.com>",
-      "Ichinose Shogo <shogo82148@gmail.com>"
+      "perlpong <calyx238@gmail.com>"
    ]
 }
