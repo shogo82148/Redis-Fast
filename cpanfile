@@ -2,6 +2,7 @@ requires 'perl', '5.008001';
 
 on 'configure' => sub{
     requires 'Module::Build::XSUtil' => '>=0.02';
+    requires 'File::Which';
 };
 
 on 'test' => sub {

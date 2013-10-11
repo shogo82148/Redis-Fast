@@ -4,6 +4,7 @@ use warnings FATAL => 'all';
 use 5.008005;
 use base 'Module::Build::XSUtil';
 use Config;
+use File::Which qw(which);
 
 sub new {
     my ( $class, %args ) = @_;
@@ -15,7 +16,20 @@ sub new {
         include_dirs         => ['src', 'deps/hiredis'],
         extra_linker_flags => ["deps/hiredis/libhiredis$Config{lib_ext}"],
     );
-    $self->do_system($Config{make}, '-C', 'deps/hiredis', 'static');
+
+    my $make;
+    if ($^O =~ m/bsd$/ && $^O !~ m/gnukfreebsd$/) {
+        my $gmake = which('gmake');
+        unless (defined $gmake) {
+            print "'gmake' is necessary for BSD platform.\n";
+            exit 0;
+        }
+        $make = $gmake;
+    } else {
+        $make = $Config{make};
+    }
+
+    $self->do_system($make, '-C', 'deps/hiredis', 'static');
     return $self;
 }
 
