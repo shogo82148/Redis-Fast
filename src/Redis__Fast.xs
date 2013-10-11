@@ -224,14 +224,18 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
 
 
 static void _wait_all_responses(Redis__Fast self) {
+    DEBUG_MSG("%s", "start");
     while(self->ac && self->ac->replies.tail) {
         wait_for_event(self, -1);
     }
+    DEBUG_MSG("%s", "finish");
 }
 
 
 static void Redis__Fast_connect(Redis__Fast self) {
     clock_t start;
+
+    DEBUG_MSG("%s", "start");
 
     if (self->ac) {
         redisAsyncFree(self->ac);
@@ -249,7 +253,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
             } else {
                 snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s:%d", self->hostname, self->port);
             }
-            croak(self->error);
+            croak("%s", self->error);
         }
         return ;
     }
@@ -261,26 +265,29 @@ static void Redis__Fast_connect(Redis__Fast self) {
             // Connected!
             return;
         }
-        if(clock() - start > self->reconnect * CLOCKS_PER_SEC) {
+        if((int)(clock() - start) > self->reconnect * CLOCKS_PER_SEC) {
             if(self->path) {
                 snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s", self->path);
             } else {
                 snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s:%d", self->hostname, self->port);
             }
-            croak(self->error);
+            croak("%s", self->error);
             return;
         }
         usleep(self->every);
     }
+    DEBUG_MSG("%s", "finish");
 }
 
 static void Redis__Fast_reconnect(Redis__Fast self) {
+    DEBUG_MSG("%s", "start");
     if(!self->ac && self->reconnect) {
         Redis__Fast_connect(self);
     }
     if(!self->ac) {
         croak("Not connected to any server");
     }
+    DEBUG_MSG("%s", "finish");
 }
 
 static redis_fast_reply_t Redis__Fast_decode_reply(Redis__Fast self, redisReply* reply, int collect_errors) {
@@ -414,11 +421,11 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
         redis_fast_reply_t res = Redis__Fast_decode_reply(self, r, 0);
 
         if (strcasecmp(stype+pvariant,"subscribe") == 0) {
-            DEBUG_MSG("%s %s %d", r->element[0]->str, r->element[1]->str, r->element[2]->integer);
+            DEBUG_MSG("%s %s %lld", r->element[0]->str, r->element[1]->str, r->element[2]->integer);
             self->is_subscriber = r->element[2]->integer;
             self->expected_subs--;
         } else if (strcasecmp(stype+pvariant,"unsubscribe") == 0) {
-            DEBUG_MSG("%s %s %d", r->element[0]->str, r->element[1]->str, r->element[2]->integer);
+            DEBUG_MSG("%s %s %lld", r->element[0]->str, r->element[1]->str, r->element[2]->integer);
             self->is_subscriber = r->element[2]->integer;
         } else {
             DEBUG_MSG("%s %s", r->element[0]->str, r->element[1]->str);
@@ -451,6 +458,8 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
 
 static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECODE custom_decode, SV* cb, int argc, const char** argv, size_t* argvlen) {
     redis_fast_reply_t ret = {NULL, NULL};
+
+    DEBUG_MSG("start %s", argv[0]);
 
     if(self->pid != getpid()) {
         Redis__Fast_connect(self);
@@ -485,6 +494,7 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
             Redis__Fast_reconnect(self);
         }
     }
+    DEBUG_MSG("finish", argv[0]);
     return ret;
 }
 
@@ -673,6 +683,7 @@ void
 DESTROY(Redis::Fast self);
 CODE:
 {
+    DEBUG_MSG("%s", "start");
     if (self->ac) {
         redisAsyncFree(self->ac);
         self->ac = NULL;
@@ -704,6 +715,7 @@ CODE:
     }
 
     Safefree(self);
+    DEBUG_MSG("%s", "finish");
 }
 
 
@@ -1029,8 +1041,10 @@ void
 wait_for_messages(Redis::Fast self, double timeout)
 CODE:
 {
+    DEBUG_MSG("%s", "start");
     self->proccess_sub_count = 0;
     while(wait_for_event(self, timeout)) ;
     ST(0) = sv_2mortal(newSViv(self->proccess_sub_count));
+    DEBUG_MSG("%s", "finish");
     XSRETURN(1);
 }
