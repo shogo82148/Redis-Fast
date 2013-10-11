@@ -5,7 +5,6 @@ use strict;
 use Test::More;
 use Test::Fatal;
 use Test::Deep;
-use IO::String;
 use Redis::Fast;
 use IO::Socket::INET;
 use Test::TCP;
