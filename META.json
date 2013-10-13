@@ -30,6 +30,7 @@
          "requires" : {
             "CPAN::Meta" : "0",
             "CPAN::Meta::Prereqs" : "0",
+            "File::Which" : "0",
             "Module::Build" : "0.38",
             "Module::Build::XSUtil" : "0.02"
          }
@@ -84,6 +85,8 @@
       "Gregor Herrmann <gregoa@debian.org>",
       "Volker Kroll <vkroll@allein-zu-haus.de>",
       "Pedro Melo <melo@simplicidade.org>",
-      "perlpong <calyx238@gmail.com>"
+      "perlpong <calyx238@gmail.com>",
+      "Syohei YOSHIDA <syohex@gmail.com>",
+      "shogo82148 <ichinose-shogo@kayac.com>"
    ]
 }
