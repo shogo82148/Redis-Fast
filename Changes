@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.02 2013-10-13T13:27:37Z
     * Remove needless module
     * Use gmake for building library on BSD platform except KFreeBSD
     * Improve reconnection
