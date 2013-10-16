@@ -1092,7 +1092,7 @@ CODE:
 }
 
 void
-wait_for_messages(Redis::Fast self, double timeout)
+wait_for_messages(Redis::Fast self, double timeout = -1)
 CODE:
 {
     DEBUG_MSG("%s", "start");

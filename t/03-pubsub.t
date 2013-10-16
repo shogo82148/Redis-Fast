@@ -122,6 +122,30 @@ subtest 'basics' => sub {
 };
 
 
+subtest 'wait_for_messages forever' => sub {
+  my $pid = fork();
+  BAIL_OUT("Fork failed, aborting") unless defined $pid;
+
+  if ($pid) {  ## parent
+    diag("parent waiting for child $pid...");
+    my $failed = reap($pid, 11);
+    if ($failed) {
+      pass("wait_for_messages wait forever ");
+      kill(15, $pid);
+      reap($pid) and fail('failed to reap the dead child');
+    }
+    else {
+      fail("wait_for_messages return");
+    }
+  } else {
+    my $sub = Redis::Fast->new(server => $srv);
+    $sub->subscribe('chan', sub { });
+    $sub->wait_for_messages; ## never return
+    exit(0);
+  }
+};
+
+
 subtest 'server is killed while waiting for subscribe' => sub {
   my ($another_kill_switch, $another_server) = redis();
 
