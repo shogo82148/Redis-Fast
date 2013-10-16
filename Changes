@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.03 2013-10-16T12:14:58Z
     * wait_for_messages will block forever if parameters are not given
 
 0.02 2013-10-13T13:27:37Z
