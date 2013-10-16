@@ -10,5 +10,7 @@ on 'test' => sub {
     requires 'File::Temp';
     requires 'Test::Deep';
     requires 'Test::TCP';
+    requires 'Test::Fatal';
+    requires 'Try::Tiny';
 };
 
