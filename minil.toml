@@ -1,4 +1,4 @@
 [build]
 build_class = "builder::MyBuilder"
 [no_index]
-directory = ['t', 'xt', 'inc', 'share', 'eg', 'examples', 'author', 'builder']
+directory = ['t', 'xt', 'inc', 'share', 'eg', 'examples', 'author', 'builder', 'deps']
