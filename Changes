@@ -1,6 +1,7 @@
 Revision history for Redis
 
 {{$NEXT}}
+    * wait_for_messages will block forever if parameters are not given
 
 0.02 2013-10-13T13:27:37Z
     * Remove needless module
