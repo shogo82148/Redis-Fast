@@ -866,12 +866,13 @@ CODE:
         collect_errors = 1;
 
     ret = Redis__Fast_run_cmd(self, collect_errors, NULL, cb, argc, (const char**)argv, argvlen);
-    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
-    ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
-    XSRETURN(2);
 
     Safefree(argv);
     Safefree(argvlen);
+
+    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
+    ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
+    XSRETURN(2);
 }
 
 
@@ -980,12 +981,12 @@ CODE:
     }
 
     ret = Redis__Fast_run_cmd(self, 0, Redis__Fast_keys_custom_decode, cb, argc, (const char**)argv, argvlen);
+    Safefree(argv);
+    Safefree(argvlen);
+
     ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
     ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
     XSRETURN(2);
-
-    Safefree(argv);
-    Safefree(argvlen);
 }
 
 
@@ -1024,12 +1025,12 @@ CODE:
     }
 
     ret = Redis__Fast_run_cmd(self, 0, Redis__Fast_info_custom_decode, cb, argc, (const char**)argv, argvlen);
+    Safefree(argv);
+    Safefree(argvlen);
+
     ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
     ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
     XSRETURN(2);
-
-    Safefree(argv);
-    Safefree(argvlen);
 }
 
 
@@ -1084,11 +1085,11 @@ CODE:
         );
     self->expected_subs = argc - 1;
     while(self->expected_subs > 0 && wait_for_event(self, 1) == WAIT_FOR_EVENT_OK) ;
-    XSRETURN(1);
 
     Safefree(argv);
     Safefree(argvlen);
     DEBUG_MSG("%s", "finish");
+    XSRETURN(1);
 }
 
 void
