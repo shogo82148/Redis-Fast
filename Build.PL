@@ -33,7 +33,6 @@ my %args = (
 
     test_files           => ((-d '.git' || $ENV{RELEASE_TESTING}) && -d 'xt') ? 't/ xt/' : 't/',
     recursive_test_files => 1,
-
     
 );
 if (-d 'share') {

@@ -1,6 +1,6 @@
-# AUTHOR
+# NAME
 
-Ichinose Shogo <shogo82148@gmail.com>
+Redis::Fast - Perl binding for Redis database
 
 # SYNOPSIS
 
@@ -171,6 +171,10 @@ Redis::Fast is 4x faster than Redis.pm in pipeline mode.
     22588.95/s
     Redis::Fast:
     81098.01/s
+
+# AUTHOR
+
+Ichinose Shogo <shogo82148@gmail.com>
 
 # SEE ALSO
 
