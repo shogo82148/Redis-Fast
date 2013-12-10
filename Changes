@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.04 2013-12-10T02:56:46Z
     * Fix memory leak
     * Fix dependance
 
