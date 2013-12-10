@@ -1,6 +1,5 @@
 package Redis::Fast;
 
-# ABSTRACT: Perl binding for Redis database
 BEGIN {
     use XSLoader;
     our $VERSION = '0.03';
@@ -259,9 +258,11 @@ sub __is_valid_command {
 
 __END__
 
-=head1 AUTHOR
+=encoding utf-8
 
-Ichinose Shogo E<lt>shogo82148@gmail.comE<gt>
+=head1 NAME
+
+Redis::Fast - Perl binding for Redis database
 
 =head1 SYNOPSIS
 
@@ -426,6 +427,10 @@ Redis::Fast is 4x faster than Redis.pm in pipeline mode.
     22588.95/s
     Redis::Fast:
     81098.01/s
+
+=head1 AUTHOR
+
+Ichinose Shogo E<lt>shogo82148@gmail.comE<gt>
 
 =head1 SEE ALSO
 
