@@ -442,6 +442,9 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_subscribe_cb_t *cbt = (redis_fast_subscribe_cb_t*)privdata;
     redisReply* r = (redisReply*)reply;
+    SV* sv_undef;
+    sv_undef = sv_2mortal(newSV(0));
+
     DEBUG_MSG("%s", "start");
 
     if (r) {
@@ -460,6 +463,10 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
             DEBUG_MSG("%s %s", r->element[0]->str, r->element[1]->str);
             self->proccess_sub_count++;
         }
+
+        if(res.result == NULL) res.result = sv_undef;
+        if(res.error == NULL) res.error = sv_undef;
+
         {
             dSP;
 
