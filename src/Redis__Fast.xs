@@ -441,11 +441,8 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
 static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* privdata) {
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_subscribe_cb_t *cbt = (redis_fast_subscribe_cb_t*)privdata;
-    SV* sv_undef;
     redisReply* r = (redisReply*)reply;
     DEBUG_MSG("%s", "start");
-
-    sv_undef = sv_2mortal(newSV(0));
 
     if (r) {
         char* stype = r->element[0]->str;
