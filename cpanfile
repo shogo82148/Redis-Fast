@@ -12,5 +12,6 @@ on 'test' => sub {
     requires 'Test::TCP';
     requires 'Test::Fatal';
     requires 'Try::Tiny';
+    requires 'Test::LeakTrace';
 };
 
