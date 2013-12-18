@@ -344,9 +344,9 @@ static redis_fast_reply_t Redis__Fast_decode_reply(Redis__Fast self, redisReply*
         break;
 
     case REDIS_REPLY_ARRAY: {
-        AV* av = (AV*)sv_2mortal((SV*)newAV());
+        AV* av = newAV();
         size_t i;
-        res.result = newRV_inc((SV*)av);
+        res.result = sv_2mortal(newRV_noinc((SV*)av));
 
         for (i = 0; i < reply->elements; i++) {
             redis_fast_reply_t elem = Redis__Fast_decode_reply(self, reply->element[i], collect_errors);
@@ -1093,7 +1093,7 @@ CODE:
     Safefree(argv);
     Safefree(argvlen);
     DEBUG_MSG("%s", "finish");
-    XSRETURN(1);
+    XSRETURN(0);
 }
 
 void
