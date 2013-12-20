@@ -67,6 +67,16 @@ subtest 'KEYS commands with extra logic triggers reconnect' => sub {
 };
 
 
+subtest 'PING commands with extra logic triggers reconnect' => sub {
+  ok(my $r = Redis::Fast->new(reconnect => 2, server => $srv), 'connected to our test redis-server');
+
+  ok($r->quit, 'close connection to the server');
+
+  my $res = $r->ping;
+  ok($res, 'reconnect on PING command');
+};
+
+
 subtest "Bad commands don't trigger reconnect" => sub {
   ok(my $r = Redis::Fast->new(reconnect => 2, server => $srv), 'connected to our test redis-server');
 
