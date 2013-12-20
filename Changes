@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.05 2013-12-20T02:22:09Z
     - Fix memory leak of lists
     - PING commands trigers reconnect
 
