@@ -2,7 +2,7 @@ Revision history for Redis
 
 {{$NEXT}}
     - Fix memory leak of lists
-    - PING command reconnects
+    - PING commands trigers reconnect
 
 0.04 2013-12-10T02:56:46Z
     - Fix memory leak
