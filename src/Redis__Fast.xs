@@ -881,32 +881,6 @@ CODE:
 
 
 void
-__ping(Redis::Fast self)
-PREINIT:
-    redis_fast_sync_cb_t cbt;
-CODE:
-{
-    if(self->ac) {
-        cbt.ret.result = NULL;
-        cbt.ret.error = NULL;
-        cbt.custom_decode = NULL;
-        redisAsyncCommand(
-            self->ac, Redis__Fast_sync_reply_cb, &cbt, "PING"
-            );
-        if(_wait_all_responses(self) == WAIT_FOR_EVENT_OK) {
-            ST(0) = cbt.ret.result ? cbt.ret.result : sv_2mortal(newSV(0));
-            ST(1) = cbt.ret.error ? cbt.ret.error : sv_2mortal(newSV(0));
-            XSRETURN(2);
-        } else {
-            XSRETURN(0);
-        }
-    } else {
-        XSRETURN(0);
-    }
-}
-
-
-void
 __quit(Redis::Fast self)
 PREINIT:
     redis_fast_sync_cb_t cbt;
