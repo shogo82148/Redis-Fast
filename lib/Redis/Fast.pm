@@ -2,7 +2,7 @@ package Redis::Fast;
 
 BEGIN {
     use XSLoader;
-    our $VERSION = '0.04';
+    our $VERSION = '0.05';
     XSLoader::load __PACKAGE__, $VERSION;
 }
 
@@ -134,10 +134,13 @@ sub keys {
 sub ping {
     my $self = shift;
     $self->__is_valid_command('ping');
-    my ($ret, $error) = $self->__ping;
-    confess "[keys] $error, " if defined $error;
-    return $ret unless ref $ret eq 'ARRAY';
-    return @$ret;
+    return scalar try {
+        my ($ret, $error) = $self->__std_cmd('ping');
+        return if defined $error;
+        return $ret;
+    } catch {
+        return ;
+    };
 }
 
 sub info {
