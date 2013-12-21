@@ -174,21 +174,49 @@ sub __subscription_cmd {
 
   $self->wait_all_responses;
 
+  while($self->__get_data->{cbs}) {
+      $self->__wait_for_event(1);
+  }
+
   my @subs = @_;
   @subs = $self->__process_unsubscribe_requests($cb, $pr, @subs)
       if $unsub;
-  my %cbs = map { ("${pr}message:$_" => $cb) } @subs;
+
   if(@subs) {
-      return $self->__send_subscription_cmd(
-          $command,
-          @subs,
-          sub {
-              return $self->__process_subscription_changes($command, \%cbs, @_);
-          },
-      );
-  } else {
-      return 0;
+      $self->__get_data->{cbs} = { map { ("${pr}message:$_" => $cb) } @subs };
+      for my $sub(@subs) {
+          $self->__send_subscription_cmd(
+              $command,
+              $sub,
+              $self->__subscription_callbak,
+          );
+      }
+      while($self->__get_data->{cbs}) {
+          $self->__wait_for_event(1);
+      }
   }
+}
+
+sub __subscription_callbak {
+    my $self = shift;
+    my $cb = $self->__get_data->{callback};
+    return $cb if $cb;
+
+    weaken $self;
+    $cb = sub {
+        my $cbs = $self->__get_data->{cbs};
+        if($cbs) {
+            $self->__process_subscription_changes($cbs, @_);
+            unless(%$cbs) {
+                $self->__get_data->{cbs} = undef;
+            }
+        } else {
+            $self->__process_pubsub_msg(@_);
+        }
+    };
+
+    $self->__get_data->{callback} = $cb;
+    return $cb;
 }
 
 sub subscribe    { shift->__subscription_cmd('',  0, subscribe    => @_) }
@@ -214,10 +242,8 @@ sub __process_unsubscribe_requests {
 }
 
 sub __process_subscription_changes {
-  my ($self, $cmd, $expected, $m, $error) = @_;
+  my ($self, $expected, $m, $error) = @_;
   my $subs = $self->__get_data->{subscribers};
-
-  confess "[$cmd] $error, " if defined $error;
 
   ## Deal with pending PUBLISH'ed messages
   if ($m->[0] =~ /^p?message$/) {
