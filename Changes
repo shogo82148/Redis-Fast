@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - Fix memory leak of callback functions
+    - Fix issue #5 does not play way with signals
 
 0.05 2013-12-20T02:22:09Z
     - Fix memory leak of lists
