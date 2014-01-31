@@ -38,7 +38,17 @@ no_leaks_ok {
     my $res;
     $r->rpush('hogehoge', 'fugafuga') for (1..3);
     $res = $r->lrange('hogehoge', 0, -1);
+    $r->flushdb;
 } 'sync list operation';
+
+no_leaks_ok {
+    my $r = Redis::Fast->new(server => $srv);
+    my $res;
+    $r->rpush('hogehoge', 'fugafuga') for (1..3);
+    $r->lrange('hogehoge', 0, -1, sub { $res = shift });
+    $r->wait_all_responses;
+    $r->flushdb;
+} 'async list operation';
 
 no_leaks_ok {
     my $r = Redis::Fast->new(server => $srv);
