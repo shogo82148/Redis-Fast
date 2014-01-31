@@ -391,6 +391,9 @@ static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* p
         } else {
             cbt->ret = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
         }
+    } else if(c->c.flags & REDIS_FREEING) {
+        DEBUG_MSG("%s", "redis feeing");
+        Safefree(cbt);
     } else {
         DEBUG_MSG("connect error: %s", c->errstr);
         self->need_recoonect = 1;
@@ -515,26 +518,30 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
             );
         ret.result = sv_2mortal(newSViv(1));
     } else {
-        redis_fast_sync_cb_t cbt;
+        redis_fast_sync_cb_t *cbt;
+        Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
         int i, cnt = (self->reconnect == 0 ? 1 : 2);
         for(i = 0; i < cnt; i++) {
             int res;
             self->need_recoonect = 0;
-            cbt.ret.result = NULL;
-            cbt.ret.error = NULL;
-            cbt.custom_decode = custom_decode;
-            cbt.collect_errors = collect_errors;
+            cbt->ret.result = NULL;
+            cbt->ret.error = NULL;
+            cbt->custom_decode = custom_decode;
+            cbt->collect_errors = collect_errors;
             redisAsyncCommandArgv(
-                self->ac, Redis__Fast_sync_reply_cb, &cbt,
+                self->ac, Redis__Fast_sync_reply_cb, cbt,
                 argc, argv, argvlen
                 );
             res = _wait_all_responses(self);
             if(res == WAIT_FOR_EVENT_OK && !self->need_recoonect) {
+                ret = cbt->ret;
+                if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
                 DEBUG_MSG("finish %s", argv[0]);
-                return cbt.ret;
+                return ret;
             }
             Redis__Fast_reconnect(self);
         }
+        if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
     }
     DEBUG_MSG("finish %s", argv[0]);
     return ret;
@@ -547,6 +554,7 @@ static redis_fast_reply_t Redis__Fast_keys_custom_decode(Redis__Fast self, redis
 
 static redis_fast_reply_t Redis__Fast_info_custom_decode(Redis__Fast self, redisReply* reply, int collect_errors) {
     redis_fast_reply_t res = {NULL, NULL};
+
     if(reply->type == REDIS_REPLY_STRING ||
        reply->type == REDIS_REPLY_STATUS) {
 
@@ -883,21 +891,24 @@ CODE:
 void
 __quit(Redis::Fast self)
 PREINIT:
-    redis_fast_sync_cb_t cbt;
+    redis_fast_sync_cb_t *cbt;
 CODE:
 {
     if(self->ac) {
-        cbt.ret.result = NULL;
-        cbt.ret.error = NULL;
-        cbt.custom_decode = NULL;
+        Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
+        cbt->ret.result = NULL;
+        cbt->ret.error = NULL;
+        cbt->custom_decode = NULL;
         redisAsyncCommand(
-            self->ac, Redis__Fast_sync_reply_cb, &cbt, "QUIT"
+            self->ac, Redis__Fast_sync_reply_cb, cbt, "QUIT"
             );
         redisAsyncDisconnect(self->ac);
         if(_wait_all_responses(self) == WAIT_FOR_EVENT_OK) {
-            ST(0) = cbt.ret.result;
+            ST(0) = cbt->ret.result;
+            if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
             XSRETURN(1);
         } else {
+            if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
             XSRETURN(0);
         }
     } else {
