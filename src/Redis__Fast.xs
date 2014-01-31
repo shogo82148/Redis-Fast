@@ -181,17 +181,8 @@ static void Redis__Fast_connect_cb(redisAsyncContext* c, int status) {
     } else {
         if(self->on_connect){
             dSP;
-
-            ENTER;
-            SAVETMPS;
-
             PUSHMARK(SP);
-            PUTBACK;
-
-            call_sv(self->on_connect, G_DISCARD);
-
-            FREETMPS;
-            LEAVE;
+            call_sv(self->on_connect, G_DISCARD | G_NOARGS);
         }
     }
 }
@@ -408,33 +399,31 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
     redis_fast_async_cb_t *cbt = (redis_fast_async_cb_t*)privdata;
     redis_fast_reply_t result;
     SV* sv_undef;
-    sv_undef = sv_2mortal(newSV(0));
     if (reply) {
+        dSP;
+
+        ENTER;
+        SAVETMPS;
+
         if(cbt->custom_decode) {
             result = (cbt->custom_decode)(self, (redisReply*)reply, cbt->collect_errors);
         } else {
             result = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
         }
 
+        sv_undef = sv_2mortal(newSV(0));
         if(result.result == NULL) result.result = sv_undef;
         if(result.error == NULL) result.error = sv_undef;
 
-        {
-            dSP;
+        PUSHMARK(SP);
+        XPUSHs(result.result);
+        XPUSHs(result.error);
+        PUTBACK;
 
-            ENTER;
-            SAVETMPS;
+        call_sv(cbt->cb, G_DISCARD);
 
-            PUSHMARK(SP);
-            PUSHs(result.result);
-            PUSHs(result.error);
-            PUTBACK;
-
-            call_sv(cbt->cb, G_DISCARD);
-
-            FREETMPS;
-            LEAVE;
-        }
+        FREETMPS;
+        LEAVE;
     }
 
     SvREFCNT_dec(cbt->cb);
@@ -442,15 +431,23 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
 }
 
 static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* privdata) {
+    int is_need_free = 0;
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_subscribe_cb_t *cbt = (redis_fast_subscribe_cb_t*)privdata;
     redisReply* r = (redisReply*)reply;
     SV* sv_undef;
-    sv_undef = sv_2mortal(newSV(0));
 
     DEBUG_MSG("%s", "start");
+    if(!cbt) {
+        DEBUG_MSG("%s", "cbt is empty finished");
+        return ;
+    }
 
     if (r) {
+        dSP;
+        ENTER;
+        SAVETMPS;
+
         char* stype = r->element[0]->str;
         int pvariant = (tolower(stype[0]) == 'p') ? 1 : 0;
         redis_fast_reply_t res = Redis__Fast_decode_reply(self, r, 0);
@@ -462,35 +459,37 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
         } else if (strcasecmp(stype+pvariant,"unsubscribe") == 0) {
             DEBUG_MSG("%s %s %lld", r->element[0]->str, r->element[1]->str, r->element[2]->integer);
             self->is_subscriber = r->element[2]->integer;
+            is_need_free = 1;
         } else {
             DEBUG_MSG("%s %s", r->element[0]->str, r->element[1]->str);
             self->proccess_sub_count++;
         }
 
+        sv_undef = sv_2mortal(newSV(0));
         if(res.result == NULL) res.result = sv_undef;
         if(res.error == NULL) res.error = sv_undef;
 
-        {
-            dSP;
+        PUSHMARK(SP);
+        XPUSHs(res.result);
+        XPUSHs(res.error);
+        PUTBACK;
 
-            ENTER;
-            SAVETMPS;
+        call_sv(cbt->cb, G_DISCARD);
 
-            PUSHMARK(SP);
-            PUSHs(res.result);
-            PUSHs(res.error);
-            PUTBACK;
-
-            call_sv(cbt->cb, G_DISCARD);
-
-            FREETMPS;
-            LEAVE;
-        }
+        FREETMPS;
+        LEAVE;
     } else {
-        // destroy private data
         DEBUG_MSG("connect error: %s", c->errstr);
+        is_need_free = 1;
+    }
+
+    if(is_need_free) {
+        // destroy private data
         DEBUG_MSG("destroy %p", cbt);
-        SvREFCNT_dec(cbt->cb);
+        if(cbt->cb) {
+            SvREFCNT_dec(cbt->cb);
+            cbt->cb = NULL;
+        }
         Safefree(cbt);
     }
     DEBUG_MSG("%s", "finish");
@@ -735,31 +734,37 @@ CODE:
 {
     DEBUG_MSG("%s", "start");
     if (self->ac) {
+        DEBUG_MSG("%s", "free ac");
         redisAsyncFree(self->ac);
         self->ac = NULL;
     }
 
     if(self->hostname) {
+        DEBUG_MSG("%s", "free hostname");
         free(self->hostname);
         self->hostname = NULL;
     }
 
     if(self->path) {
+        DEBUG_MSG("%s", "free path");
         free(self->path);
         self->path = NULL;
     }
 
     if(self->error) {
+        DEBUG_MSG("%s", "free error");
         free(self->error);
         self->error = NULL;
     }
 
     if(self->on_connect) {
+        DEBUG_MSG("%s", "free on_connect");
         SvREFCNT_dec(self->on_connect);
         self->on_connect = NULL;
     }
 
     if(self->data) {
+        DEBUG_MSG("%s", "free data");
         SvREFCNT_dec(self->data);
         self->data = NULL;
     }
@@ -1061,11 +1066,13 @@ CODE:
         DEBUG_MSG("argv[%d] = %s", i, argv[i]);
     }
 
-    pvariant = (tolower(argv[0][0]) == 'p') ? 1 : 0;
+    pvariant = tolower(argv[0][0]) == 'p';
     if (strcasecmp(argv[0]+pvariant,"unsubscribe") != 0) {
+        DEBUG_MSG("%s", "command is not unsubscribe");
         Newx(cbt, sizeof(redis_fast_subscribe_cb_t), redis_fast_subscribe_cb_t);
         cbt->cb = SvREFCNT_inc(cb);
     } else {
+        DEBUG_MSG("%s", "command is unsubscribe");
         cbt = NULL;
     }
     redisAsyncCommandArgv(
@@ -1091,4 +1098,14 @@ CODE:
     ST(0) = sv_2mortal(newSViv(self->proccess_sub_count));
     DEBUG_MSG("%s", "finish");
     XSRETURN(1);
+}
+
+void
+__wait_for_event(Redis::Fast self, double timeout = -1)
+CODE:
+{
+    DEBUG_MSG("%s", "start");
+    wait_for_event(self, timeout);
+    DEBUG_MSG("%s", "finish");
+    XSRETURN(0);
 }
