@@ -535,7 +535,7 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
             res = _wait_all_responses(self);
             if(res == WAIT_FOR_EVENT_OK && !self->need_recoonect) {
                 ret = cbt->ret;
-                Safefree(cbt);
+                if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
                 DEBUG_MSG("finish %s", argv[0]);
                 return ret;
             }
@@ -905,10 +905,10 @@ CODE:
         redisAsyncDisconnect(self->ac);
         if(_wait_all_responses(self) == WAIT_FOR_EVENT_OK) {
             ST(0) = cbt->ret.result;
-            Safefree(cbt);
+            if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
             XSRETURN(1);
         } else {
-            Safefree(cbt);
+            if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
             XSRETURN(0);
         }
     } else {
