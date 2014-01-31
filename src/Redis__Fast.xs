@@ -391,6 +391,10 @@ static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* p
         } else {
             cbt->ret = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
         }
+    } else if(c->c.flags & REDIS_FREEING) {
+        DEBUG_MSG("redis feeing");
+        cbt->ret.result = NULL;
+        cbt->ret.error = NULL;
     } else {
         DEBUG_MSG("connect error: %s", c->errstr);
         self->need_recoonect = 1;
