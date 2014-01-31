@@ -541,7 +541,7 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
             }
             Redis__Fast_reconnect(self);
         }
-        Safefree(cbt);
+        if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
     }
     DEBUG_MSG("finish %s", argv[0]);
     return ret;
