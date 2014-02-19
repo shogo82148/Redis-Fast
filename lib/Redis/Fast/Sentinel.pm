@@ -1,13 +1,13 @@
-package Redis::Sentinel;
+package Redis::Fast::Sentinel;
 
-# ABSTRACT: Redis Sentinel interface
+# ABSTRACT: Redis::Fast Sentinel interface
 
 use warnings;
 use strict;
 
 use Carp;
 
-use base qw(Redis);
+use base qw(Redis::Fast);
 
 sub new {
     my ($class, %args) = @_;
@@ -37,25 +37,25 @@ __END__
 
 =head1 SYNOPSIS
 
-    my $sentinel = Redis::Sentinel->new( ... );
+    my $sentinel = Redis::Fast::Sentinel->new( ... );
     my $service_address = $sentinel->get_service_address('mymaster');
     my @masters = $sentinel->get_masters;
 
 =head1 DESCRIPTION
 
-This is a subclass of the Redis module, specialized into connecting to a
-Sentinel instance. Inherits from the C<Redis> package;
+This is a subclass of the Redis::Fast module, specialized into connecting to a
+Sentinel instance. Inherits from the C<Redis::Fast> package;
 
 =head1 CONSTRUCTOR
 
 =head2 new
 
-See C<new> in L<Redis.pm>. All parameters are supported, except C<sentinels>
+See C<new> in L<Redis::Fast>. All parameters are supported, except C<sentinels>
 and C<service>, which are silently ignored.
 
 =head1 METHODS
 
-All the methods of the C<Redis> package are supported, plus the aditional following methods:
+All the methods of the C<Redis::Fast> package are supported, plus the aditional following methods:
 
 =head2 get_service_address
 
