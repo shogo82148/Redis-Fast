@@ -84,7 +84,7 @@ sub new {
   $self->__set_reconnect($args{reconnect} || 0);
   $self->__set_every($args{every} || 1000);
 
-  $self->__connect;
+  $self->connect unless $args{no_auto_connect_on_new};
 
   return $self;
 }

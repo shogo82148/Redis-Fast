@@ -818,7 +818,7 @@ CODE:
 
 
 void
-__connect(Redis::Fast self)
+connect(Redis::Fast self)
 CODE:
 {
     Redis__Fast_connect(self);

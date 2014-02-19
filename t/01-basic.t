@@ -13,7 +13,7 @@ END { $c->() if $c }
 
 my $n;
 is(
-  exception { $n = Redis->new(server => $srv, name => 'no_auto_connect', no_auto_connect_on_new => 1) },
+  exception { $n = Redis::Fast->new(server => $srv, name => 'no_auto_connect', no_auto_connect_on_new => 1) },
   undef, 'Got an unconnected object',
 );
 ok(!$n->ping, "ping doesn't work yet");
