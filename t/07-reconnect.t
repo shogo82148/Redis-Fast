@@ -20,13 +20,12 @@ subtest 'Command without connection, no reconnect' => sub {
   like(exception { $r->set(reconnect => 1) }, qr{Not connected to any server}, 'send ping without reconnect',);
 };
 
-
-subtest 'Command without connection or timeout, with reconnect' => sub {
+subtest 'Command without connection or timeout, with database change, with reconnect' => sub {
   ok(my $r = Redis::Fast->new(reconnect => 2, server => $srv), 'connected to our test redis-server');
 
-  ok($r->quit, 'close connection to the server');
+  ok($r->select(4), 'send command with reconnect');
   ok($r->set(reconnect => $$), 'send command with reconnect');
-  _wait_for_redis_timeout();
+  ok($r->quit, 'close connection to the server');
   is($r->get('reconnect'), $$, 'reconnect with read errors before write');
 };
 
@@ -83,7 +82,7 @@ subtest "Bad commands don't trigger reconnect" => sub {
   my $prev_sock = $r->__sock;
   like(
     exception { $r->set(bad => reconnect => 1) },
-    qr{ERR wrong number of arguments for 'set' command|\[set\] ERR syntax error},
+    qr{ERR wrong number of arguments for 'set' command|ERR syntax error},
     'Bad commands still die',
   );
   is($r->__sock, $prev_sock, "... and don't trigger a reconnect");

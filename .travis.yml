@@ -2,7 +2,12 @@ language: perl
 services:
   - redis-server
 perl:
-  - 5.10
-  - 5.12
-  - 5.14
-  - 5.16
+  - "5.16"
+  - "5.14"
+  - "5.12"
+  - "5.10"
+before_install:
+  - "git config --global user.name TravisCI"
+  - "git config --global github.user dams"
+install: "dzil authordeps | xargs cpanm --quiet --notest && dzil listdeps | xargs cpanm --quiet --notest"
+script: "dzil test --release"
