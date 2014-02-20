@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Fatal;
-use Redis;
+use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisTimeoutServer;
 use Errno qw(ETIMEDOUT EWOULDBLOCK);
@@ -15,7 +15,7 @@ use Test::TCP;
 
 subtest 'server replies quickly enough' => sub {
     my $server = Test::SpawnRedisTimeoutServer::create_server_with_timeout(0);
-    my $redis = Redis->new(server => '127.0.0.1:' . $server->port, read_timeout => 1);
+    my $redis = Redis::Fast->new(server => '127.0.0.1:' . $server->port, read_timeout => 1);
     ok($redis);
     my $res = $redis->get('foo');;
     is $res, 42;
@@ -23,7 +23,7 @@ subtest 'server replies quickly enough' => sub {
 
 subtest "server doesn't replies quickly enough" => sub {
     my $server = Test::SpawnRedisTimeoutServer::create_server_with_timeout(10);
-    my $redis = Redis->new(server => '127.0.0.1:' . $server->port, read_timeout => 1);
+    my $redis = Redis::Fast->new(server => '127.0.0.1:' . $server->port, read_timeout => 1);
     ok($redis);
     my $msg1 = "Error while reading from Redis server: " . strerror(ETIMEDOUT);
     my $msg2 = "Error while reading from Redis server: " . strerror(EWOULDBLOCK);
@@ -48,7 +48,7 @@ subtest "server doesn't respond at connection (cnx_timeout)" => sub {
     my $redis;
     my $start_time = time;
     isnt(
-         exception { $redis = Redis->new(server => '127.0.0.1:' . $server->port, cnx_timeout => 1); },
+         exception { $redis = Redis::Fast->new(server => '127.0.0.1:' . $server->port, cnx_timeout => 1); },
          undef,
          "the code died",
         );
