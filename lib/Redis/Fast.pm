@@ -83,6 +83,9 @@ sub new {
   #$self->{subscribers}   = {};
   $self->__set_reconnect($args{reconnect} || 0);
   $self->__set_every($args{every} || 1000);
+  $self->__set_cnx_timeout($args{cnx_timeout} || -1);
+  $self->__set_read_timeout($args{read_timeout} || -1);
+  $self->__set_write_timeout($args{write_timeout} || -1);
 
   $self->connect unless $args{no_auto_connect_on_new};
 
