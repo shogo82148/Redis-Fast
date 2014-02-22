@@ -975,6 +975,9 @@ PREINIT:
 CODE:
 {
     Redis__Fast_reconnect(self);
+    if(!self->ac) {
+        croak("Not connected to any server");
+    }
 
     cb = ST(items - 1);
     if (SvROK(cb) && SvTYPE(SvRV(cb)) == SVt_PVCV) {
