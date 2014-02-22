@@ -486,6 +486,7 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
             DEBUG_MSG("%s %s %lld", r->element[0]->str, r->element[1]->str, r->element[2]->integer);
             self->is_subscriber = r->element[2]->integer;
             is_need_free = 1;
+            self->expected_subs--;
         } else {
             DEBUG_MSG("%s %s", r->element[0]->str, r->element[1]->str);
             self->proccess_sub_count++;
