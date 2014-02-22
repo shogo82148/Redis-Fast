@@ -46,6 +46,7 @@ typedef struct redis_fast_s {
     int is_utf8;
     int need_recoonect;
     SV* on_connect;
+    SV* on_build_sock;
     SV* data;
     int proccess_sub_count;
     int is_subscriber;
@@ -221,6 +222,19 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
 {
     redisAsyncContext *ac;
     DEBUG_MSG("%s", "start");
+
+    if(self->on_build_sock) {
+        dSP;
+
+        ENTER;
+        SAVETMPS;
+
+        PUSHMARK(SP);
+        call_sv(self->on_build_sock, G_DISCARD | G_NOARGS);
+
+        FREETMPS;
+        LEAVE;
+    }
 
     if(self->path) {
         ac = redisAsyncConnectUnix(self->path);
@@ -644,10 +658,12 @@ PREINIT:
 redis_fast_t* self;
 CODE:
 {
+    DEBUG_MSG("%s", "start");
     Newxz(self, sizeof(redis_fast_t), redis_fast_t);
     self->error = (char*)malloc(MAX_ERROR_SIZE);
     ST(0) = sv_newmortal();
     sv_setref_pv(ST(0), cls, (void*)self);
+    DEBUG_MSG("return %p", ST(0));
     XSRETURN(1);
 }
 OUTPUT:
@@ -822,6 +838,13 @@ CODE:
 }
 
 void
+__set_on_build_sock(Redis::Fast self, SV* func)
+CODE:
+{
+    self->on_build_sock = SvREFCNT_inc(func);
+}
+
+void
 __set_data(Redis::Fast self, SV* data)
 CODE:
 {
@@ -878,6 +901,12 @@ CODE:
         DEBUG_MSG("%s", "free on_connect");
         SvREFCNT_dec(self->on_connect);
         self->on_connect = NULL;
+    }
+
+    if(self->on_build_sock) {
+        DEBUG_MSG("%s", "free on_build_sock");
+        SvREFCNT_dec(self->on_build_sock);
+        self->on_build_sock = NULL;
     }
 
     if(self->data) {
