@@ -14,6 +14,8 @@ use Encode;
 use Try::Tiny;
 use Scalar::Util qw(weaken);
 
+use Redis::Fast::Sentinel;
+
 sub _new_on_connect_cb {
     my ($self, $on_conn, $password, $name) = @_;
     weaken $self;
@@ -88,14 +90,73 @@ sub new {
   $self->__set_on_connect($self->_new_on_connect_cb($on_conn, $password, $name));
   $self->__set_data({
       subscribers => {},
+      sentinels_cnx_timeout    => $args{sentinels_cnx_timeout},
+      sentinels_read_timeout   => $args{sentinels_read_timeout},
+      sentinels_write_timeout  => $args{sentinels_write_timeout},
+      no_sentinels_list_update => $args{no_sentinels_list_update},
   });
 
   if ($args{sock}) {
-    $self->__connection_info_unix($args{sock});
-  }
-  else {
-    my ($server, $port) = split /:/, ($args{server} || '127.0.0.1:6379');
-    $self->__connection_info($server, $port);
+      $self->__connection_info_unix($args{sock});
+  } elsif ($args{sentinels}) {
+      my $sentinels = $args{sentinels};
+      ref $sentinels eq 'ARRAY'
+          or croak("'sentinels' param must be an ArrayRef");
+      defined($self->__get_data->{service} = $args{service})
+          or croak("Need 'service' name when using 'sentinels'!");
+      $self->__get_data->{sentinels} = $sentinels;
+      my $on_build_sock = sub {
+          my $data = $self->__get_data;
+          my $sentinels = $data->{sentinels};
+
+          # try to connect to a sentinel
+          my $status;
+          foreach my $sentinel_address (@$sentinels) {
+              my $sentinel = eval {
+                  Redis::Fast::Sentinel->new(
+                      server => $sentinel_address,
+                      cnx_timeout   => (   exists $data->{sentinels_cnx_timeout}
+                                               ? $data->{sentinels_cnx_timeout}   : 0.1),
+                      read_timeout  => (   exists $data->{sentinels_read_timeout}
+                                               ? $data->{sentinels_read_timeout}  : 1  ),
+                      write_timeout => (   exists $data->{sentinels_write_timeout}
+                                               ? $data->{sentinels_write_timeout} : 1  ),
+                  )
+              } or next;
+              my $server_address = $sentinel->get_service_address($data->{service});
+              defined $server_address
+                or $status ||= "Sentinels don't know this service",
+                   next;
+              $server_address eq 'IDONTKNOW'
+                and $status = "service is configured in one Sentinel, but was never reached",
+                    next;
+
+              # we found the service, set the server
+              my ($server, $port) = split /:/, $server_address;
+              $self->__connection_info($server, $port);
+
+              if (! $data->{no_sentinels_list_update} ) {
+                  # move the elected sentinel at the front of the list and add
+                  # additional sentinels
+                  my $idx = 2;
+                  my %h = ( ( map { $_ => $idx++ } @{$data->{sentinels}}),
+                            $sentinel_address => 1,
+                          );
+                  $data->{sentinels} = [
+                      ( sort { $h{$a} <=> $h{$b} } keys %h ), # sorted existing sentinels,
+                      grep { ! $h{$_}; }                      # list of unknown
+                      map { +{ @$_ }->{name}; }               # names of
+                      $sentinel->sentinel(                    # sentinels 
+                        sentinels => $data->{service}         # for this service
+                      )
+                  ];
+              }
+          }
+      };
+      $self->__set_on_build_sock($on_build_sock);
+  } else {
+      my ($server, $port) = split /:/, ($args{server} || '127.0.0.1:6379');
+      $self->__connection_info($server, $port);
   }
 
   #$self->{is_subscriber} = 0;
@@ -110,6 +171,7 @@ sub new {
 
   return $self;
 }
+
 
 
 ### Deal with common, general case, Redis commands

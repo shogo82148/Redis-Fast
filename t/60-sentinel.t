@@ -4,8 +4,8 @@ use warnings;
 use strict;
 use Test::More;
 use Test::Fatal;
-use Redis;
-use Redis::Sentinel;
+use Redis::Fast;
+use Redis::Fast::Sentinel;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
@@ -34,7 +34,7 @@ sleep 3;
 
 {
     # check basic sentinel command
-    my $sentinel = Redis::Sentinel->new(server => $sentinel_addr);
+    my $sentinel = Redis::Fast::Sentinel->new(server => $sentinel_addr);
     my $got = ($sentinel->get_masters())[0];
 
     delete @{$got}{qw(last-ok-ping-reply last-ping-reply runid role-reported-time info-refresh pending-commands)};
@@ -54,21 +54,21 @@ sleep 3;
 }
 
 {
-    my $sentinel = Redis::Sentinel->new(server => $sentinel_addr);
+    my $sentinel = Redis::Fast::Sentinel->new(server => $sentinel_addr);
     my $address = $sentinel->get_service_address('mymaster');
     is $address, "127.0.0.1:$redis_port", "found service mymaster";
 }
 
 {
-    my $sentinel = Redis::Sentinel->new(server => $sentinel_addr);
+    my $sentinel = Redis::Fast::Sentinel->new(server => $sentinel_addr);
     my $address = $sentinel->get_service_address('mywrongmaster');
     is $address, undef, "didn't found service mywrongmaster";
 }
 
 {
    # connect to the master via the sentinel
-   my $redis = Redis->new(sentinels => [ $sentinel_addr ], service => 'mymaster');
-   is_deeply({ map { $_ => 1} @{$redis->{sentinels} || []} },
+   my $redis = Redis::Fast->new(sentinels => [ $sentinel_addr ], service => 'mymaster');
+   is_deeply({ map { $_ => 1} @{$redis->__get_data->{sentinels} || []} },
              { $sentinel_addr => 1, $sentinel2_addr => 1},
              "Redis client has connected and updated its sentinels");
 
