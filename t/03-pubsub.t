@@ -12,7 +12,7 @@ use Test::SpawnRedisServer qw( redis reap );
 my ($c, $srv) = redis();
 END { $c->() if $c }
 {
-my $r = Redis->new(server => $srv);
+my $r = Redis::Fast->new(server => $srv);
 eval { $r->publish( 'aa', 'v1' ) };
 plan 'skip_all' => "pubsub not implemented on this redis server"  if $@ && $@ =~ /unknown command/;
 }
@@ -209,7 +209,7 @@ subtest 'server is restarted while waiting for subscribe' => sub {
 
   if ($pid) {    ## parent, we'll wait for the child to die quickly
 
-    ok(my $sync = Redis->new(server => $srv), 'PARENT: connected to our test redis-server (sync parent)');
+    ok(my $sync = Redis::Fast->new(server => $srv), 'PARENT: connected to our test redis-server (sync parent)');
     BAIL_OUT('Missed sync while waiting for child') unless defined $sync->blpop('wake_up_parent', 4);
 
     ok($another_kill_switch->(), "PARENT: pub/sub redis server killed");
@@ -220,7 +220,7 @@ subtest 'server is restarted while waiting for subscribe' => sub {
 
     # relaunch it on the same port
     my ($yet_another_kill_switch) = redis(port => $port);
-    my $pub  = Redis->new(server => $another_server);
+    my $pub  = Redis::Fast->new(server => $another_server);
 
     diag("PARENT: has relaunched the server...");
     sleep 5;
@@ -240,8 +240,8 @@ subtest 'server is restarted while waiting for subscribe' => sub {
     ok($yet_another_kill_switch->(), "PARENT: pub/sub redis server killed");
   }
   else {    ## child
-    my $sync = Redis->new(server => $srv);
-    my $sub  = Redis->new(server => $another_server,
+    my $sync = Redis::Fast->new(server => $srv);
+    my $sub  = Redis::Fast->new(server => $another_server,
                           reconnect => 10,
                           on_connect => sub { diag "CHILD: reconnected (with a 10s timeout)"; }
                          );
