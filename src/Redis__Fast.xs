@@ -39,6 +39,9 @@ typedef struct redis_fast_s {
     char* error;
     int reconnect;
     int every;
+    double cnx_timeout;
+    double read_timeout;
+    double write_timeout;
     int is_utf8;
     int need_recoonect;
     SV* on_connect;
@@ -126,7 +129,7 @@ static int Attach(redisAsyncContext *ac) {
     return REDIS_OK;
 }
 
-static int wait_for_event(Redis__Fast self, double timeout) {
+static int wait_for_event(Redis__Fast self, double read_timeout, double write_timeout) {
     redisContext *c;
     int fd;
     redis_fast_event_t *e;
@@ -142,6 +145,24 @@ static int wait_for_event(Redis__Fast self, double timeout) {
     e = (redis_fast_event_t*)self->ac->ev.data;
     if(e==NULL) return 0;
 
+    double timeout = -1;
+    if(e->flags & (WAIT_FOR_READ|WAIT_FOR_WRITE)) {
+        if(read_timeout < 0 && write_timeout < 0) {
+            timeout = -1;
+        } else if(read_timeout < 0) {
+            timeout = write_timeout;
+        } else if(write_timeout < 0) {
+            timeout = read_timeout;
+        } else if(read_timeout < write_timeout) {
+            timeout = read_timeout;
+        } else {
+            timeout = write_timeout;
+        }
+    } else if(e->flags & WAIT_FOR_READ) {
+        timeout = read_timeout;
+    } else if(e->flags & WAIT_FOR_WRITE) {
+        timeout = write_timeout;
+    }
     t.tv_sec = (int)timeout;
     t.tv_usec = (timeout - (int)timeout) * 1000000;
 
@@ -216,7 +237,7 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     redisAsyncSetDisconnectCallback(ac, (redisDisconnectCallback*)Redis__Fast_disconnect_cb);
 
     // wait to connect...
-    int res = wait_for_event(self, self->reconnect ? self->reconnect : -1);
+    int res = wait_for_event(self, self->cnx_timeout, self->cnx_timeout);
     if(res != WAIT_FOR_EVENT_OK) {
         DEBUG_MSG("error: %d", res);
         redisAsyncFree(self->ac);
@@ -232,7 +253,7 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
 static int _wait_all_responses(Redis__Fast self) {
     DEBUG_MSG("%s", "start");
     while(self->ac && self->ac->replies.tail) {
-        int res = wait_for_event(self, -1);
+        int res = wait_for_event(self, self->read_timeout, self->write_timeout);
         if (res != WAIT_FOR_EVENT_OK) {
             DEBUG_MSG("error: %d", res);
             return res;
@@ -648,6 +669,63 @@ __get_every(Redis::Fast self)
 CODE:
 {
     RETVAL = self->every;
+}
+OUTPUT:
+    RETVAL
+
+
+double
+__set_cnx_timeout(Redis::Fast self, double val)
+CODE:
+{
+    RETVAL = self->cnx_timeout = val;
+}
+OUTPUT:
+    RETVAL
+
+double
+__get_cnx_timeout(Redis::Fast self)
+CODE:
+{
+    RETVAL = self->cnx_timeout;
+}
+OUTPUT:
+    RETVAL
+
+
+double
+__set_read_timeout(Redis::Fast self, double val)
+CODE:
+{
+    RETVAL = self->read_timeout = val;
+}
+OUTPUT:
+    RETVAL
+
+double
+__get_read_timeout(Redis::Fast self)
+CODE:
+{
+    RETVAL = self->read_timeout;
+}
+OUTPUT:
+    RETVAL
+
+
+double
+__set_write_timeout(Redis::Fast self, double val)
+CODE:
+{
+    RETVAL = self->write_timeout = val;
+}
+OUTPUT:
+    RETVAL
+
+double
+__get_write_timeout(Redis::Fast self)
+CODE:
+{
+    RETVAL = self->write_timeout;
 }
 OUTPUT:
     RETVAL
@@ -1080,7 +1158,7 @@ CODE:
         argc, (const char**)argv, argvlen
         );
     self->expected_subs = argc - 1;
-    while(self->expected_subs > 0 && wait_for_event(self, 1) == WAIT_FOR_EVENT_OK) ;
+    while(self->expected_subs > 0 && wait_for_event(self, self->read_timeout, self->write_timeout) == WAIT_FOR_EVENT_OK) ;
 
     Safefree(argv);
     Safefree(argvlen);
@@ -1094,7 +1172,7 @@ CODE:
 {
     DEBUG_MSG("%s", "start");
     self->proccess_sub_count = 0;
-    while(wait_for_event(self, timeout) == WAIT_FOR_EVENT_OK) ;
+    while(wait_for_event(self, timeout, timeout) == WAIT_FOR_EVENT_OK) ;
     ST(0) = sv_2mortal(newSViv(self->proccess_sub_count));
     DEBUG_MSG("%s", "finish");
     XSRETURN(1);
@@ -1105,7 +1183,7 @@ __wait_for_event(Redis::Fast self, double timeout = -1)
 CODE:
 {
     DEBUG_MSG("%s", "start");
-    wait_for_event(self, timeout);
+    wait_for_event(self, timeout, timeout);
     DEBUG_MSG("%s", "finish");
     XSRETURN(0);
 }
