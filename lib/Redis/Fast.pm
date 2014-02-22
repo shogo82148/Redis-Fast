@@ -9,7 +9,6 @@ BEGIN {
 use warnings;
 use strict;
 
-use Data::Dumper;
 use Carp qw/confess/;
 use Encode;
 use Try::Tiny;
@@ -34,7 +33,6 @@ sub _new_on_connect_cb {
         }
 
         my $subscribers = $self->__get_data->{subscribers};
-        use Data::Dumper;
         $self->__get_data->{subscribers} = {};
         $self->__get_data->{cbs} = undef;
         foreach my $topic (CORE::keys(%{$subscribers})) {
