@@ -240,7 +240,7 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     redisAsyncSetDisconnectCallback(ac, (redisDisconnectCallback*)Redis__Fast_disconnect_cb);
 
     // wait to connect...
-    int timeout = self->every / 1000;
+    double timeout = self->every / 1000.0;
     if(self->cnx_timeout > 0 && self->cnx_timeout < timeout) {
         timeout = self->cnx_timeout;
     }
@@ -558,10 +558,12 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
             cbt->ret.error = NULL;
             cbt->custom_decode = custom_decode;
             cbt->collect_errors = collect_errors;
+            DEBUG_MSG("%s", "send command in sync mode");
             redisAsyncCommandArgv(
                 self->ac, Redis__Fast_sync_reply_cb, cbt,
                 argc, argv, argvlen
                 );
+            DEBUG_MSG("%s", "waiting response");
             res = _wait_all_responses(self);
             if(res == WAIT_FOR_EVENT_OK && !self->need_recoonect) {
                 ret = cbt->ret;
@@ -972,6 +974,8 @@ PREINIT:
     int argc, i, collect_errors;
 CODE:
 {
+    Redis__Fast_reconnect(self);
+
     cb = ST(items - 1);
     if (SvROK(cb) && SvTYPE(SvRV(cb)) == SVt_PVCV) {
         argc = items - 2;
