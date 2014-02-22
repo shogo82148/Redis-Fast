@@ -69,10 +69,14 @@ subtest 'KEYS commands with extra logic triggers reconnect' => sub {
 subtest 'PING commands with extra logic triggers reconnect' => sub {
   ok(my $r = Redis::Fast->new(reconnect => 2, server => $srv), 'connected to our test redis-server');
 
-  ok($r->quit, 'close connection to the server');
+  _wait_for_redis_timeout();
 
   my $res = $r->ping;
   ok($res, 'reconnect on PING command');
+
+  ok($r->quit, 'close connection to the server');
+  $res = $r->ping;
+  ok(!$res, 'QUIT command disables reconnect on PING command');
 };
 
 
