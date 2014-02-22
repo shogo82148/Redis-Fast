@@ -19,17 +19,36 @@ sub _new_on_connect_cb {
     my ($self, $on_conn, $password, $name) = @_;
     weaken $self;
     return sub {
-        try {
-            $self->auth($password) if defined $password;
-        } catch {
-            confess("Redis server refused password");
-        };
-        try {
-            my $n = $name;
-            $n = $n->($self) if ref($n) eq 'CODE';
-            $self->client_setname($n) if defined $n;
-        };
-        $on_conn->($self) if $on_conn;
+        # If we are in PubSub mode we shouldn't perform any command besides
+        # (p)(un)subscribe
+        if (! $self->is_subscriber) {
+            defined $name
+                and try {
+                    my $n = $name;
+                    $n = $n->($self) if ref($n) eq 'CODE';
+                    $self->client_setname($n) if defined $n;
+                };
+            my $data = $self->__get_data;
+            defined $data->{current_database}
+                and $self->select($data->{current_database});
+        }
+
+        my $subscribers = $self->__get_data->{subscribers};
+        $self->__get_data->{subscribers} = {};
+        $self->__get_data->{cbs} = undef;
+        foreach my $topic (CORE::keys(%{$subscribers})) {
+            if ($topic =~ /(p?message):(.*)$/ ) {
+                my ($key, $channel) = ($1, $2);
+                if ($key eq 'message') {
+                    $self->__subscription_cmd('',  0, subscribe => $channel, $subscribers->{$topic});
+                } else {
+                    $self->__subscription_cmd('p',  0, psubscribe => $channel, $subscribers->{$topic});
+                }
+            }
+        }
+
+        defined $on_conn
+            and $on_conn->($self);
     };
 }
 
@@ -165,6 +184,16 @@ sub shutdown {
     my $self = shift;
     $self->__is_valid_command('shutdown');
     $self->__shutdown(@_);
+}
+
+sub select {
+  my $self = shift;
+  my $database = shift;
+  $self->__is_valid_command('select');
+  my ($ret, $error) = $self->__std_cmd('SELECT', $database, @_);
+  confess "[SELECT] $error, " if defined $error;
+  $self->__get_data->{current_database} = $database;
+  return $ret;
 }
 
 sub __subscription_cmd {

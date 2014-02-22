@@ -19,7 +19,7 @@
 #define WAIT_FOR_EVENT_TIMEDOUT 1
 #define WAIT_FOR_EVENT_EXCEPTION 2
 
-//#define DEBUG
+##define DEBUG
 #if defined(DEBUG)
 #define DEBUG_MSG(fmt, ...) \
     do {                                                                \
@@ -42,6 +42,7 @@ typedef struct redis_fast_s {
     double cnx_timeout;
     double read_timeout;
     double write_timeout;
+    int current_database;
     int is_utf8;
     int need_recoonect;
     SV* on_connect;
@@ -237,7 +238,11 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     redisAsyncSetDisconnectCallback(ac, (redisDisconnectCallback*)Redis__Fast_disconnect_cb);
 
     // wait to connect...
-    int res = wait_for_event(self, self->cnx_timeout, self->cnx_timeout);
+    int timeout = self->every / 1000;
+    if(self->cnx_timeout > 0 && self->cnx_timeout < timeout) {
+        timeout = self->cnx_timeout;
+    }
+    int res = wait_for_event(self, timeout, timeout);
     if(res != WAIT_FOR_EVENT_OK) {
         DEBUG_MSG("error: %d", res);
         redisAsyncFree(self->ac);
@@ -726,6 +731,26 @@ __get_write_timeout(Redis::Fast self)
 CODE:
 {
     RETVAL = self->write_timeout;
+}
+OUTPUT:
+    RETVAL
+
+
+int
+__set_current_database(Redis::Fast self, int val)
+CODE:
+{
+    RETVAL = self->is_utf8 = val;
+}
+OUTPUT:
+    RETVAL
+
+
+int
+__get_current_database(Redis::Fast self)
+CODE:
+{
+    RETVAL = self->is_utf8;
 }
 OUTPUT:
     RETVAL
