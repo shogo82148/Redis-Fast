@@ -34,15 +34,17 @@ sub _new_on_connect_cb {
         }
 
         my $subscribers = $self->__get_data->{subscribers};
+        use Data::Dumper;
         $self->__get_data->{subscribers} = {};
         $self->__get_data->{cbs} = undef;
         foreach my $topic (CORE::keys(%{$subscribers})) {
             if ($topic =~ /(p?message):(.*)$/ ) {
                 my ($key, $channel) = ($1, $2);
+                my $subs = $subscribers->{$topic};
                 if ($key eq 'message') {
-                    $self->__subscription_cmd('',  0, subscribe => $channel, $subscribers->{$topic});
+                    $self->__subscription_cmd('',  0, subscribe => $channel, $_) for @$subs;
                 } else {
-                    $self->__subscription_cmd('p',  0, psubscribe => $channel, $subscribers->{$topic});
+                    $self->__subscription_cmd('p',  0, psubscribe => $channel, $_) for @$subs;
                 }
             }
         }

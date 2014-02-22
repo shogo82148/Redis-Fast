@@ -73,6 +73,7 @@ typedef struct redis_fast_async_cb_s {
 } redis_fast_async_cb_t;
 
 typedef struct redis_fast_subscribe_cb_s {
+    Redis__Fast self;
     SV* cb;
 } redis_fast_subscribe_cb_t;
 
@@ -172,6 +173,7 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
     FD_ZERO(&writefds); if(e->flags & WAIT_FOR_WRITE) { FD_SET(fd, &writefds); }
     FD_ZERO(&exceptfds); FD_SET(fd, &exceptfds);
     rc = select(fd + 1, &readfds, &writefds, &exceptfds, timeout < 0 ? NULL : &t);
+    DEBUG_MSG("select returns %d", rc);
     if(rc<=0) {
         DEBUG_MSG("%s", "timeout");
         return WAIT_FOR_EVENT_TIMEDOUT;
@@ -330,7 +332,7 @@ static void Redis__Fast_reconnect(Redis__Fast self) {
         Redis__Fast_connect(self);
     }
     if(!self->ac) {
-        croak("Not connected to any server");
+        DEBUG_MSG("%s", "Not connected to any server");
     }
     DEBUG_MSG("%s", "finish");
 }
@@ -508,6 +510,7 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
     } else {
         DEBUG_MSG("connect error: %s", c->errstr);
         is_need_free = 1;
+        
     }
 
     if(is_need_free) {
@@ -1148,6 +1151,8 @@ PREINIT:
     int pvariant;
 CODE:
 {
+    int cnt = (self->reconnect == 0 ? 1 : 2);
+
     DEBUG_MSG("%s", "start");
 
     Redis__Fast_reconnect(self);
@@ -1174,21 +1179,26 @@ CODE:
         DEBUG_MSG("argv[%d] = %s", i, argv[i]);
     }
 
-    pvariant = tolower(argv[0][0]) == 'p';
-    if (strcasecmp(argv[0]+pvariant,"unsubscribe") != 0) {
-        DEBUG_MSG("%s", "command is not unsubscribe");
-        Newx(cbt, sizeof(redis_fast_subscribe_cb_t), redis_fast_subscribe_cb_t);
-        cbt->cb = SvREFCNT_inc(cb);
-    } else {
-        DEBUG_MSG("%s", "command is unsubscribe");
-        cbt = NULL;
+    for(i = 0; i < cnt; i++) {
+        pvariant = tolower(argv[0][0]) == 'p';
+        if (strcasecmp(argv[0]+pvariant,"unsubscribe") != 0) {
+            DEBUG_MSG("%s", "command is not unsubscribe");
+            Newx(cbt, sizeof(redis_fast_subscribe_cb_t), redis_fast_subscribe_cb_t);
+            cbt->self = self;
+            cbt->cb = SvREFCNT_inc(cb);
+        } else {
+            DEBUG_MSG("%s", "command is unsubscribe");
+            cbt = NULL;
+        }
+        redisAsyncCommandArgv(
+            self->ac, cbt ? Redis__Fast_subscribe_cb : NULL, cbt,
+            argc, (const char**)argv, argvlen
+            );
+        self->expected_subs = argc - 1;
+        while(self->expected_subs > 0 && wait_for_event(self, self->read_timeout, self->write_timeout) == WAIT_FOR_EVENT_OK) ;
+        if(self->expected_subs == 0) break;
+        Redis__Fast_reconnect(self);
     }
-    redisAsyncCommandArgv(
-        self->ac, cbt ? Redis__Fast_subscribe_cb : NULL, cbt,
-        argc, (const char**)argv, argvlen
-        );
-    self->expected_subs = argc - 1;
-    while(self->expected_subs > 0 && wait_for_event(self, self->read_timeout, self->write_timeout) == WAIT_FOR_EVENT_OK) ;
 
     Safefree(argv);
     Safefree(argvlen);
@@ -1200,11 +1210,30 @@ void
 wait_for_messages(Redis::Fast self, double timeout = -1)
 CODE:
 {
+    int i, cnt = (self->reconnect == 0 ? 1 : 2);
+    int res = WAIT_FOR_EVENT_OK;
     DEBUG_MSG("%s", "start");
     self->proccess_sub_count = 0;
-    while(wait_for_event(self, timeout, timeout) == WAIT_FOR_EVENT_OK) ;
+    for(i = 0; i < cnt; i++) {
+        while((res = wait_for_event(self, timeout, timeout)) == WAIT_FOR_EVENT_OK) ;
+        if(res == WAIT_FOR_EVENT_TIMEDOUT) break;
+        Redis__Fast_reconnect(self);
+    }
+    if(res == WAIT_FOR_EVENT_EXCEPTION) {
+        if(!self->ac) {
+            DEBUG_MSG("%s", "Connection not found");
+            croak("EOF from server");
+        } else if(self->ac->c.err == REDIS_ERR_EOF) {
+            DEBUG_MSG("hiredis returns error: %s", self->ac->c.errstr);
+            croak("EOF from server");
+        } else {
+            DEBUG_MSG("hiredis returns error: %s", self->ac->c.errstr);
+            snprintf(self->error, MAX_ERROR_SIZE, "[WAIT_FOR_MESSAGES] %s", self->ac->c.errstr);
+            croak("%s", self->error);
+        }
+    }
     ST(0) = sv_2mortal(newSViv(self->proccess_sub_count));
-    DEBUG_MSG("%s", "finish");
+    DEBUG_MSG("finish with %d", res);
     XSRETURN(1);
 }
 
