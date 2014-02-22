@@ -158,6 +158,7 @@ sub keys {
 sub ping {
     my $self = shift;
     $self->__is_valid_command('ping');
+    return unless $self->__sock;
     return scalar try {
         my ($ret, $error) = $self->__std_cmd('ping');
         return if defined $error;

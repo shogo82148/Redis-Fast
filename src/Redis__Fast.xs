@@ -510,7 +510,6 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
     } else {
         DEBUG_MSG("connect error: %s", c->errstr);
         is_need_free = 1;
-        
     }
 
     if(is_need_free) {
@@ -531,7 +530,9 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
 
     DEBUG_MSG("start %s", argv[0]);
 
+    DEBUG_MSG("pid check: previous pid is %d, now %d", self->pid, getpid());
     if(self->pid != getpid()) {
+        DEBUG_MSG("%s", "pid changed. create new connection..");
         Redis__Fast_connect(self);
     }
 
@@ -574,6 +575,9 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
         if(res == WAIT_FOR_EVENT_TIMEDOUT) {
             snprintf(self->error, MAX_ERROR_SIZE, "Error while reading from Redis server: %s", strerror(ETIMEDOUT));
             croak("%s", self->error);
+        }
+        if(!self->ac) {
+            croak("Not connected to any server");
         }
     }
     DEBUG_MSG("Finish %s", argv[0]);
@@ -968,8 +972,6 @@ PREINIT:
     int argc, i, collect_errors;
 CODE:
 {
-    Redis__Fast_reconnect(self);
-
     cb = ST(items - 1);
     if (SvROK(cb) && SvTYPE(SvRV(cb)) == SVt_PVCV) {
         argc = items - 2;
