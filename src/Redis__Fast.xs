@@ -174,12 +174,12 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
     FD_ZERO(&exceptfds); FD_SET(fd, &exceptfds);
     rc = select(fd + 1, &readfds, &writefds, &exceptfds, timeout < 0 ? NULL : &t);
     DEBUG_MSG("select returns %d", rc);
-    if(rc<=0) {
+    if(rc == 0) {
         DEBUG_MSG("%s", "timeout");
         return WAIT_FOR_EVENT_TIMEDOUT;
     }
 
-    if(FD_ISSET(fd, &exceptfds)) {
+    if(rc < 0 || FD_ISSET(fd, &exceptfds)) {
         DEBUG_MSG("%s", "exception!!");
         return WAIT_FOR_EVENT_EXCEPTION;
     }
