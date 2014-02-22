@@ -19,7 +19,7 @@
 #define WAIT_FOR_EVENT_TIMEDOUT 1
 #define WAIT_FOR_EVENT_EXCEPTION 2
 
-##define DEBUG
+//#define DEBUG
 #if defined(DEBUG)
 #define DEBUG_MSG(fmt, ...) \
     do {                                                                \
@@ -546,8 +546,8 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
         redis_fast_sync_cb_t *cbt;
         Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
         int i, cnt = (self->reconnect == 0 ? 1 : 2);
+        int res = WAIT_FOR_EVENT_OK;
         for(i = 0; i < cnt; i++) {
-            int res;
             self->need_recoonect = 0;
             cbt->ret.result = NULL;
             cbt->ret.error = NULL;
@@ -567,8 +567,12 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
             Redis__Fast_reconnect(self);
         }
         if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
+        if(res == WAIT_FOR_EVENT_TIMEDOUT) {
+            snprintf(self->error, MAX_ERROR_SIZE, "Error while reading from Redis server: %s", strerror(ETIMEDOUT));
+            croak("%s", self->error);
+        }
     }
-    DEBUG_MSG("finish %s", argv[0]);
+    DEBUG_MSG("Finish %s", argv[0]);
     return ret;
 }
 
