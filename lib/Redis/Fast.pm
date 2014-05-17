@@ -9,27 +9,48 @@ BEGIN {
 use warnings;
 use strict;
 
-use Data::Dumper;
 use Carp qw/confess/;
 use Encode;
 use Try::Tiny;
 use Scalar::Util qw(weaken);
 
+use Redis::Fast::Sentinel;
+
 sub _new_on_connect_cb {
     my ($self, $on_conn, $password, $name) = @_;
     weaken $self;
     return sub {
-        try {
-            $self->auth($password) if defined $password;
-        } catch {
-            confess("Redis server refused password");
-        };
-        try {
-            my $n = $name;
-            $n = $n->($self) if ref($n) eq 'CODE';
-            $self->client_setname($n) if defined $n;
-        };
-        $on_conn->($self) if $on_conn;
+        # If we are in PubSub mode we shouldn't perform any command besides
+        # (p)(un)subscribe
+        if (! $self->is_subscriber) {
+            defined $name
+                and try {
+                    my $n = $name;
+                    $n = $n->($self) if ref($n) eq 'CODE';
+                    $self->client_setname($n) if defined $n;
+                };
+            my $data = $self->__get_data;
+            defined $data->{current_database}
+                and $self->select($data->{current_database});
+        }
+
+        my $subscribers = $self->__get_data->{subscribers};
+        $self->__get_data->{subscribers} = {};
+        $self->__get_data->{cbs} = undef;
+        foreach my $topic (CORE::keys(%{$subscribers})) {
+            if ($topic =~ /(p?message):(.*)$/ ) {
+                my ($key, $channel) = ($1, $2);
+                my $subs = $subscribers->{$topic};
+                if ($key eq 'message') {
+                    $self->__subscription_cmd('',  0, subscribe => $channel, $_) for @$subs;
+                } else {
+                    $self->__subscription_cmd('p',  0, psubscribe => $channel, $_) for @$subs;
+                }
+            }
+        }
+
+        defined $on_conn
+            and $on_conn->($self);
     };
 }
 
@@ -69,25 +90,88 @@ sub new {
   $self->__set_on_connect($self->_new_on_connect_cb($on_conn, $password, $name));
   $self->__set_data({
       subscribers => {},
+      sentinels_cnx_timeout    => $args{sentinels_cnx_timeout},
+      sentinels_read_timeout   => $args{sentinels_read_timeout},
+      sentinels_write_timeout  => $args{sentinels_write_timeout},
+      no_sentinels_list_update => $args{no_sentinels_list_update},
   });
 
   if ($args{sock}) {
-    $self->__connection_info_unix($args{sock});
-  }
-  else {
-    my ($server, $port) = split /:/, ($args{server} || '127.0.0.1:6379');
-    $self->__connection_info($server, $port);
+      $self->__connection_info_unix($args{sock});
+  } elsif ($args{sentinels}) {
+      my $sentinels = $args{sentinels};
+      ref $sentinels eq 'ARRAY'
+          or croak("'sentinels' param must be an ArrayRef");
+      defined($self->__get_data->{service} = $args{service})
+          or croak("Need 'service' name when using 'sentinels'!");
+      $self->__get_data->{sentinels} = $sentinels;
+      my $on_build_sock = sub {
+          my $data = $self->__get_data;
+          my $sentinels = $data->{sentinels};
+
+          # try to connect to a sentinel
+          my $status;
+          foreach my $sentinel_address (@$sentinels) {
+              my $sentinel = eval {
+                  Redis::Fast::Sentinel->new(
+                      server => $sentinel_address,
+                      cnx_timeout   => (   exists $data->{sentinels_cnx_timeout}
+                                               ? $data->{sentinels_cnx_timeout}   : 0.1),
+                      read_timeout  => (   exists $data->{sentinels_read_timeout}
+                                               ? $data->{sentinels_read_timeout}  : 1  ),
+                      write_timeout => (   exists $data->{sentinels_write_timeout}
+                                               ? $data->{sentinels_write_timeout} : 1  ),
+                  )
+              } or next;
+              my $server_address = $sentinel->get_service_address($data->{service});
+              defined $server_address
+                or $status ||= "Sentinels don't know this service",
+                   next;
+              $server_address eq 'IDONTKNOW'
+                and $status = "service is configured in one Sentinel, but was never reached",
+                    next;
+
+              # we found the service, set the server
+              my ($server, $port) = split /:/, $server_address;
+              $self->__connection_info($server, $port);
+
+              if (! $data->{no_sentinels_list_update} ) {
+                  # move the elected sentinel at the front of the list and add
+                  # additional sentinels
+                  my $idx = 2;
+                  my %h = ( ( map { $_ => $idx++ } @{$data->{sentinels}}),
+                            $sentinel_address => 1,
+                          );
+                  $data->{sentinels} = [
+                      ( sort { $h{$a} <=> $h{$b} } keys %h ), # sorted existing sentinels,
+                      grep { ! $h{$_}; }                      # list of unknown
+                      map { +{ @$_ }->{name}; }               # names of
+                      $sentinel->sentinel(                    # sentinels 
+                        sentinels => $data->{service}         # for this service
+                      )
+                  ];
+              }
+          }
+      };
+      $self->__set_on_build_sock($on_build_sock);
+  } else {
+      my ($server, $port) = split /:/, ($args{server} || '127.0.0.1:6379');
+      $self->__connection_info($server, $port);
   }
 
   #$self->{is_subscriber} = 0;
   #$self->{subscribers}   = {};
   $self->__set_reconnect($args{reconnect} || 0);
   $self->__set_every($args{every} || 1000);
+  $self->__set_cnx_timeout($args{cnx_timeout} || -1);
+  $self->__set_read_timeout($args{read_timeout} || -1);
+  $self->__set_write_timeout($args{write_timeout} || -1);
 
-  $self->__connect;
+  $self->connect unless $args{no_auto_connect_on_new};
 
   return $self;
 }
+
 
 
 ### Deal with common, general case, Redis commands
@@ -134,6 +218,7 @@ sub keys {
 sub ping {
     my $self = shift;
     $self->__is_valid_command('ping');
+    return unless $self->__sock;
     return scalar try {
         my ($ret, $error) = $self->__std_cmd('ping');
         return if defined $error;
@@ -162,6 +247,16 @@ sub shutdown {
     my $self = shift;
     $self->__is_valid_command('shutdown');
     $self->__shutdown(@_);
+}
+
+sub select {
+  my $self = shift;
+  my $database = shift;
+  $self->__is_valid_command('select');
+  my ($ret, $error) = $self->__std_cmd('SELECT', $database, @_);
+  confess "[SELECT] $error, " if defined $error;
+  $self->__get_data->{current_database} = $database;
+  return $ret;
 }
 
 sub __subscription_cmd {

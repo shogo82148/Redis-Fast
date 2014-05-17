@@ -83,8 +83,6 @@ Redis::Fast - Perl binding for Redis database
 
     $redis->publish('topic_1', 'message');
 
-
-
 # DESCRIPTION
 
 `Redis::Fast` is a wrapper around Salvatore Sanfilippo's
@@ -93,8 +91,6 @@ It is compatible with [Redis.pm](https://github.com/melo/perl-redis).
 
 This version supports protocol 2.x (multi-bulk) or later of Redis available at
 [https://github.com/antirez/redis/](https://github.com/antirez/redis/).
-
-
 
 # PERFORMANCE IN SYNCHRONIZE MODE
 
@@ -130,8 +126,6 @@ Redis::Fast is 50% faster than Redis.pm.
       90_h_get:  9 wallclock secs ( 0.19 usr +  5.51 sys =  5.70 CPU) @ 7467.72/s (n=42566)
       90_h_set:  8 wallclock secs ( 0.28 usr +  4.83 sys =  5.11 CPU) @ 7724.07/s (n=39470)o
 
-
-
 # PERFORMANCE IN PIPELINE MODE
 
     #!/usr/bin/perl
@@ -140,7 +134,6 @@ Redis::Fast is 50% faster than Redis.pm.
     use Time::HiRes qw/time/;
     use Redis;
     
-
     my $count = 100000;
     {
         my $r = Redis->new;
@@ -152,7 +145,6 @@ Redis::Fast is 50% faster than Redis.pm.
         printf "Redis.pm:\n%.2f/s\n", $count / (time - $start);
     }
     
-
     {
         my $r = Redis::Fast->new;
         my $start = time;
@@ -162,8 +154,6 @@ Redis::Fast is 50% faster than Redis.pm.
         $r->wait_all_responses;
         printf "Redis::Fast:\n%.2f/s\n", $count / (time - $start);
     }
-
-
 
 Redis::Fast is 4x faster than Redis.pm in pipeline mode.
 

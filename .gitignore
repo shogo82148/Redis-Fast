@@ -25,3 +25,5 @@ MYMETA.*
 /lib/Redis/Fast.o
 /lib/Redis/Fast.xs
 /inc/
+*.log
+t/*.log

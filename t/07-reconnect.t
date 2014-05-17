@@ -8,6 +8,7 @@ use Time::HiRes qw(gettimeofday tv_interval);
 use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
+use Net::EmptyPort qw(empty_port);
 
 my ($c, $srv) = redis(timeout => 1);
 END { $c->() if $c }
@@ -20,13 +21,12 @@ subtest 'Command without connection, no reconnect' => sub {
   like(exception { $r->set(reconnect => 1) }, qr{Not connected to any server}, 'send ping without reconnect',);
 };
 
-
-subtest 'Command without connection or timeout, with reconnect' => sub {
+subtest 'Command without connection or timeout, with database change, with reconnect' => sub {
   ok(my $r = Redis::Fast->new(reconnect => 2, server => $srv), 'connected to our test redis-server');
 
-  ok($r->quit, 'close connection to the server');
+  ok($r->select(4), 'send command with reconnect');
   ok($r->set(reconnect => $$), 'send command with reconnect');
-  _wait_for_redis_timeout();
+  ok($r->quit, 'close connection to the server');
   is($r->get('reconnect'), $$, 'reconnect with read errors before write');
 };
 
@@ -70,10 +70,14 @@ subtest 'KEYS commands with extra logic triggers reconnect' => sub {
 subtest 'PING commands with extra logic triggers reconnect' => sub {
   ok(my $r = Redis::Fast->new(reconnect => 2, server => $srv), 'connected to our test redis-server');
 
-  ok($r->quit, 'close connection to the server');
+  _wait_for_redis_timeout();
 
   my $res = $r->ping;
   ok($res, 'reconnect on PING command');
+
+  ok($r->quit, 'close connection to the server');
+  $res = $r->ping;
+  ok(!$res, 'QUIT command disables reconnect on PING command');
 };
 
 
@@ -83,7 +87,7 @@ subtest "Bad commands don't trigger reconnect" => sub {
   my $prev_sock = $r->__sock;
   like(
     exception { $r->set(bad => reconnect => 1) },
-    qr{ERR wrong number of arguments for 'set' command|\[set\] ERR syntax error},
+    qr{ERR wrong number of arguments for 'set' command|ERR syntax error},
     'Bad commands still die',
   );
   is($r->__sock, $prev_sock, "... and don't trigger a reconnect");
@@ -110,6 +114,63 @@ subtest "Reconnect gives up after timeout" => sub {
   ok(tv_interval($t0) > 3, '... minimum value for the reconnect reached');
 };
 
+subtest "Reconnect during transaction" => sub {
+  $c->();    ## Make previous server is dead
+
+  my $port = empty_port();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "spawn redis on port $port");
+  ok(my $r = Redis::Fast->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
+
+  ok($r->multi(), 'start transacion');
+  ok($r->set('reconnect_1' => 1), 'set first key');
+
+  $c->();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "respawn redis on port $port");
+
+  like(exception { $r->set('reconnect_2' => 2) }, qr{reconnect disabled inside transaction}, 'set second key');
+
+  $r->connect(); #reconnect
+  is($r->exists('reconnect_1'), 0, 'key "reconnect_1" should not exist');
+  is($r->exists('reconnect_2'), 0, 'key "reconnect_2" should not exist');
+};
+
+subtest "Reconnect works after WATCH + MULTI + EXEC" => sub {
+  $c->();    ## Make previous server is dead
+
+  my $port = empty_port();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "spawn redis on port $port");
+  ok(my $r = Redis::Fast->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
+
+  ok($r->set('watch' => 'watch'), 'set watch key');
+  ok($r->watch('watch'), 'start watching key');
+  ok($r->multi(), 'start transacion');
+  ok($r->set('reconnect' => 1), 'set key');
+  ok($r->exec(), 'execute transaction');
+
+  $c->();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "respawn redis on port $port");
+
+  ok($r->set('reconnect' => 1), 'setting key should not fail');
+};
+
+subtest "Reconnect works after WATCH + MULTI + DISCARD" => sub {
+  $c->();    ## Make previous server is dead
+
+  my $port = empty_port();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "spawn redis on port $port");
+  ok(my $r = Redis::Fast->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
+
+  ok($r->set('watch' => 'watch'), 'set watch key');
+  ok($r->watch('watch'), 'start watching key');
+  ok($r->multi(), 'start transacion');
+  ok($r->set('reconnect' => 1), 'set key');
+  ok($r->discard(), 'dscard transaction');
+
+  $c->();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "respawn redis on port $port");
+
+  ok($r->set('reconnect' => 1), 'setting second key should not fail');
+};
 
 done_testing();
 
