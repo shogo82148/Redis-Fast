@@ -9,11 +9,10 @@ use IPC::Cmd qw(can_run);
 use POSIX ":sys_wait_h";
 use base qw( Exporter );
 
-our @EXPORT    = qw( redis );
-our @EXPORT_OK = qw( redis reap );
+use Net::EmptyPort qw(empty_port);
 
-## FIXME: for the love of $Deity... move to Test::TCP, will you??
-my $port = 11011 + ($$ % 127);
+our @EXPORT    = qw( redis sentinel );
+our @EXPORT_OK = qw( redis reap );
 
 sub redis {
   my %params = (
@@ -23,8 +22,13 @@ sub redis {
 
   my ($fh, $fn) = File::Temp::tempfile();
 
-  $port++;
-  my $addr = "127.0.0.1:$port";
+  my $port = empty_port();
+
+  my $local_port = $port;
+  $params{port}
+    and $local_port = $params{port};
+
+  my $addr = "127.0.0.1:$local_port";
 
   unlink("redis-server-$addr.log");
   unlink('dump.rdb');
@@ -33,7 +37,7 @@ sub redis {
     timeout $params{timeout}
     appendonly no
     daemonize no
-    port $port
+    port $local_port
     bind 127.0.0.1
     loglevel debug
     logfile redis-server-$addr.log
@@ -72,7 +76,73 @@ sub redis {
     }
   }
 
-  return ($c, $addr, $ver, split(/[.]/, $ver));
+  return ($c, $addr, $ver, split(/[.]/, $ver), $local_port);
+}
+
+sub sentinel {
+  my %params = (
+    timeout => 120,
+    @_,
+  );
+
+  my ($fh, $fn) = File::Temp::tempfile();
+
+  my $port = empty_port();
+
+  my $local_port = $port;
+  $params{port}
+    and $local_port = $params{port};
+
+  my $redis_port = $params{redis_port}
+    or die "need a redis port";
+
+  my $addr = "127.0.0.1:$local_port";
+
+  unlink("redis-sentinel-$addr.log");
+
+  $fh->print("
+    port $local_port
+    
+    sentinel monitor mymaster 127.0.0.1 $redis_port 2
+    sentinel down-after-milliseconds mymaster 2000
+    sentinel failover-timeout mymaster 4000
+
+    logfile sentinel-$addr.log
+
+  ");
+  $fh->flush;
+
+  my $redis_server_path = $ENV{REDIS_SERVER_PATH} || 'redis-server';
+  if (!can_run($redis_server_path)) {
+    Test::More::plan skip_all => "Could not find binary redis-server";
+    return;
+  }
+
+  my ($ver, $c);
+  eval { ($ver, $c) = spawn_server($redis_server_path, $fn, '--sentinel', $addr) };
+  if (my $e = $@) {
+    reap();
+    Test::More::plan skip_all => "Could not start redis-sentinel: $@";
+    return;
+  }
+
+  if (my $rvs = $params{requires_version}) {
+    if (!defined $ver) {
+      $c->();
+      Test::More::plan skip_all => "This tests require at least redis-server $rvs, could not determine server version";
+      return;
+    }
+
+    my ($v1, $v2, $v3) = split(/[.]/, $ver);
+    my ($r1, $r2, $r3) = split(/[.]/, $rvs);
+    if ($v1 < $r1 or $v1 == $r1 and $v2 < $r2 or $v1 == $r1 and $v2 == $r2 and $v3 < $r3) {
+      $c->();
+      Test::More::plan skip_all => "This tests require at least redis-server $rvs, server found is $ver";
+      return;
+    }
+  }
+
+  return ($c, $addr, $ver, split(/[.]/, $ver), $local_port);
 }
 
 sub spawn_server {
@@ -98,6 +168,7 @@ sub spawn_server {
       Test::More::diag("Failed to kill server at $pid")
         if $ENV{REDIS_DEBUG} and $failed;
       unlink("redis-server-$addr.log");
+      unlink("redis-sentinel-$addr.log");
       unlink('dump.rdb');
       $alive = 0;
 
@@ -121,6 +192,7 @@ sub reap {
   $limit = 3  unless $limit;
 
   my $try = 0;
+  local $?;
   while ($try++ < $limit) {
     my $ok = waitpid($pid, WNOHANG);
     $try = 0, last if $ok > 0;

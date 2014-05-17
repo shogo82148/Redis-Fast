@@ -1,7 +1,6 @@
 Revision history for Redis
 
 {{$NEXT}}
-
 0.06 2014-01-31T16:44:53Z
     - Fix memory leak of callback functions
     - Fix issue #5 does not play way with signals
