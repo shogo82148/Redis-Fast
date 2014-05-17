@@ -1,6 +1,10 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - Redis::Fast is now compatible with Redis.pm 1.974
+    - fix reconnect during transaction
+    - Sentinel features (connections, timeouts, etc) support
+
 0.06 2014-01-31T16:44:53Z
     - Fix memory leak of callback functions
     - Fix issue #5 does not play way with signals
