@@ -46,9 +46,6 @@ sleep 3;
                       'config-epoch' => 0,
                       'num-slaves' => 0,
                       'num-other-sentinels' => 1,
-                      'down-after-milliseconds' => '2000',
-                      'parallel-syncs' => 1,
-                      'failover-timeout' => '4000',
                       quorum => 2,
                     }),
               "sentinel has proper config of its master"
