@@ -119,7 +119,7 @@ subtest "Reconnect during transaction" => sub {
 
   my $port = empty_port();
   ok(($c, $srv) = redis(port => $port, timeout => 1), "spawn redis on port $port");
-  ok(my $r = Redis->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
+  ok(my $r = Redis::Fast->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
 
   ok($r->multi(), 'start transacion');
   ok($r->set('reconnect_1' => 1), 'set first key');
@@ -139,7 +139,7 @@ subtest "Reconnect works after WATCH + MULTI + EXEC" => sub {
 
   my $port = empty_port();
   ok(($c, $srv) = redis(port => $port, timeout => 1), "spawn redis on port $port");
-  ok(my $r = Redis->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
+  ok(my $r = Redis::Fast->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
 
   ok($r->set('watch' => 'watch'), 'set watch key');
   ok($r->watch('watch'), 'start watching key');
@@ -158,7 +158,7 @@ subtest "Reconnect works after WATCH + MULTI + DISCARD" => sub {
 
   my $port = empty_port();
   ok(($c, $srv) = redis(port => $port, timeout => 1), "spawn redis on port $port");
-  ok(my $r = Redis->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
+  ok(my $r = Redis::Fast->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
 
   ok($r->set('watch' => 'watch'), 'set watch key');
   ok($r->watch('watch'), 'start watching key');
