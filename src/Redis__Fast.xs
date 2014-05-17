@@ -31,6 +31,8 @@
 #define DEBUG_MSG(fmt, ...)
 #endif
 
+#define EQUALS_COMMAND(len, cmd, expected) ((len) == sizeof(expected) - 1 && memcmp(cmd, expected, sizeof(expected) - 1) == 0)
+
 typedef struct redis_fast_s {
     redisAsyncContext* ac;
     char* hostname;
@@ -52,6 +54,10 @@ typedef struct redis_fast_s {
     int is_subscriber;
     int expected_subs;
     pid_t pid;
+    enum {
+        FLAG_INSIDE_TRANSACTION = 0x01,
+        FLAG_INSIDE_WATCH = 0x02,
+    } flags;
 } redis_fast_t, *Redis__Fast;
 
 typedef struct redis_fast_reply_s {
@@ -297,6 +303,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
         redisAsyncFree(self->ac);
         self->ac = NULL;
     }
+    self->flags = 0;
 
     //$self->{queue} = [];
     self->pid = getpid();
@@ -590,6 +597,11 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
                 DEBUG_MSG("finish %s", argv[0]);
                 return ret;
             }
+
+            if(self->flags & (FLAG_INSIDE_TRANSACTION | FLAG_INSIDE_WATCH)) {
+                croak("reconnect disabled inside transaction or watch");
+            }
+
             Redis__Fast_reconnect(self);
         }
         if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
@@ -1033,8 +1045,19 @@ CODE:
     }
 
     collect_errors = 0;
-    if(cb && argvlen[0] == 4 && memcmp(argv[0], "EXEC", 4) == 0)
+    if(cb && EQUALS_COMMAND(argvlen[0], argv[0], "EXEC"))
         collect_errors = 1;
+
+    if(EQUALS_COMMAND(argvlen[0], argv[0], "MULTI")) {
+        self->flags |= FLAG_INSIDE_TRANSACTION;
+    } else if(EQUALS_COMMAND(argvlen[0], argv[0], "EXEC") ||
+              EQUALS_COMMAND(argvlen[0], argv[0], "DISCARD")) {
+        self->flags &= ~(FLAG_INSIDE_TRANSACTION | FLAG_INSIDE_WATCH);
+    } else if(EQUALS_COMMAND(argvlen[0], argv[0], "WATCH")) {
+        self->flags |= FLAG_INSIDE_WATCH;
+    } else if(EQUALS_COMMAND(argvlen[0], argv[0], "UNWATCH")) {
+        self->flags &= ~FLAG_INSIDE_WATCH;
+    }
 
     ret = Redis__Fast_run_cmd(self, collect_errors, NULL, cb, argc, (const char**)argv, argvlen);
 
