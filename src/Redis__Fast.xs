@@ -787,7 +787,7 @@ int
 __set_current_database(Redis::Fast self, int val)
 CODE:
 {
-    RETVAL = self->is_utf8 = val;
+    RETVAL = self->current_database = val;
 }
 OUTPUT:
     RETVAL
@@ -797,7 +797,7 @@ int
 __get_current_database(Redis::Fast self)
 CODE:
 {
-    RETVAL = self->is_utf8;
+    RETVAL = self->current_database;
 }
 OUTPUT:
     RETVAL
