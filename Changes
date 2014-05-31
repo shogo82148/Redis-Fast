@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - remove enconding/decoding feature
+    - fix select database bug after reconnect
 
 0.07 2014-05-17T07:19:34Z
     - Redis::Fast is now compatible with Redis.pm 1.974
