@@ -597,10 +597,14 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
 
             Redis__Fast_reconnect(self);
         }
+
+        if( res == WAIT_FOR_EVENT_OK && (cbt->ret.result || cbt->ret.error) ) Safefree(cbt);
+        // else destructor will release cbt
+
         if(res == WAIT_FOR_EVENT_TIMEDOUT) {
             snprintf(self->error, MAX_ERROR_SIZE, "Error while reading from Redis server: %s", strerror(ETIMEDOUT));
             croak("%s", self->error);
-        } else if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
+        }
         if(!self->ac) {
             croak("Not connected to any server");
         }
