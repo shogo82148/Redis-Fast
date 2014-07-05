@@ -171,6 +171,8 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
     } else if(e->flags & WAIT_FOR_WRITE) {
         timeout = write_timeout;
     }
+
+  START_SELECT:
     t.tv_sec = (int)timeout;
     t.tv_usec = (timeout - (int)timeout) * 1000000;
 
@@ -187,6 +189,11 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
 
     if(rc < 0 || FD_ISSET(fd, &exceptfds)) {
         DEBUG_MSG("%s", "exception!!");
+        if( errno == EINTR ) {
+            PERL_ASYNC_CHECK();
+            DEBUG_MSG("%s", "recieved interrupt. retry wait_for_event");
+            goto START_SELECT;
+        }
         return WAIT_FOR_EVENT_EXCEPTION;
     }
     if(self->ac && FD_ISSET(fd, &readfds)) {
