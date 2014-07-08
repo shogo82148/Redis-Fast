@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - fix double free
+    - fix signal handling
 
 0.08 2014-05-31T03:46:58Z
     - remove enconding/decoding feature
