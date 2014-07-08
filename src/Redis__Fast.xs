@@ -171,6 +171,8 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
     } else if(e->flags & WAIT_FOR_WRITE) {
         timeout = write_timeout;
     }
+
+  START_SELECT:
     t.tv_sec = (int)timeout;
     t.tv_usec = (timeout - (int)timeout) * 1000000;
 
@@ -187,6 +189,11 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
 
     if(rc < 0 || FD_ISSET(fd, &exceptfds)) {
         DEBUG_MSG("%s", "exception!!");
+        if( errno == EINTR ) {
+            PERL_ASYNC_CHECK();
+            DEBUG_MSG("%s", "recieved interrupt. retry wait_for_event");
+            goto START_SELECT;
+        }
         return WAIT_FOR_EVENT_EXCEPTION;
     }
     if(self->ac && FD_ISSET(fd, &readfds)) {
@@ -570,8 +577,8 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
         redis_fast_sync_cb_t *cbt;
         int i, cnt = (self->reconnect == 0 ? 1 : 2);
         int res = WAIT_FOR_EVENT_OK;
-        Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
         for(i = 0; i < cnt; i++) {
+            Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
             self->need_recoonect = 0;
             cbt->ret.result = NULL;
             cbt->ret.error = NULL;
@@ -597,7 +604,10 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
 
             Redis__Fast_reconnect(self);
         }
-        if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
+
+        if( res == WAIT_FOR_EVENT_OK && (cbt->ret.result || cbt->ret.error) ) Safefree(cbt);
+        // else destructor will release cbt
+
         if(res == WAIT_FOR_EVENT_TIMEDOUT) {
             snprintf(self->error, MAX_ERROR_SIZE, "Error while reading from Redis server: %s", strerror(ETIMEDOUT));
             croak("%s", self->error);
