@@ -94,21 +94,25 @@ typedef struct redis_fast_event_s {
 static void AddRead(void *privdata) {
     redis_fast_event_t *e = (redis_fast_event_t*)privdata;
     e->flags |= WAIT_FOR_READ;
+    DEBUG_MSG("flags = %x", e->flags);
 }
 
 static void DelRead(void *privdata) {
     redis_fast_event_t *e = (redis_fast_event_t*)privdata;
     e->flags &= ~WAIT_FOR_READ;
+    DEBUG_MSG("flags = %x", e->flags);
 }
 
 static void AddWrite(void *privdata) {
     redis_fast_event_t *e = (redis_fast_event_t*)privdata;
     e->flags |= WAIT_FOR_WRITE;
+    DEBUG_MSG("flags = %x", e->flags);
 }
 
 static void DelWrite(void *privdata) {
     redis_fast_event_t *e = (redis_fast_event_t*)privdata;
     e->flags &= ~WAIT_FOR_WRITE;
+    DEBUG_MSG("flags = %x", e->flags);
 }
 
 static void Cleanup(void *privdata) {
@@ -155,6 +159,8 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
     if(e==NULL) return 0;
 
     if(e->flags & (WAIT_FOR_READ|WAIT_FOR_WRITE)) {
+        DEBUG_MSG("set READ and WRITE, compare read_timeout = %f and write_timeout = %f",
+                  read_timeout, write_timeout);
         if(read_timeout < 0 && write_timeout < 0) {
             timeout = -1;
         } else if(read_timeout < 0) {
@@ -167,8 +173,10 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
             timeout = write_timeout;
         }
     } else if(e->flags & WAIT_FOR_READ) {
+        DEBUG_MSG("set READ, read_timeout = %f", read_timeout);
         timeout = read_timeout;
     } else if(e->flags & WAIT_FOR_WRITE) {
+        DEBUG_MSG("set WRITE, write_timeout = %f", write_timeout);
         timeout = write_timeout;
     }
 
