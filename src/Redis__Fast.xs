@@ -16,8 +16,9 @@
 #define MAX_ERROR_SIZE 256
 
 #define WAIT_FOR_EVENT_OK 0
-#define WAIT_FOR_EVENT_TIMEDOUT 1
-#define WAIT_FOR_EVENT_EXCEPTION 2
+#define WAIT_FOR_EVENT_READ_TIMEOUT 1
+#define WAIT_FOR_EVENT_WRITE_TIMEOUT 2
+#define WAIT_FOR_EVENT_EXCEPTION 3
 
 //#define DEBUG
 #if defined(DEBUG)
@@ -149,6 +150,7 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
     struct timeval t;
     int rc;
     double timeout = -1;
+    int timeout_mode = WAIT_FOR_EVENT_WRITE_TIMEOUT;
 
     if(self==NULL) return WAIT_FOR_EVENT_EXCEPTION;
     if(self->ac==NULL) return WAIT_FOR_EVENT_EXCEPTION;
@@ -163,21 +165,28 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
                   read_timeout, write_timeout);
         if(read_timeout < 0 && write_timeout < 0) {
             timeout = -1;
+            timeout_mode = WAIT_FOR_EVENT_WRITE_TIMEOUT;
         } else if(read_timeout < 0) {
             timeout = write_timeout;
+            timeout_mode = WAIT_FOR_EVENT_WRITE_TIMEOUT;
         } else if(write_timeout < 0) {
             timeout = read_timeout;
+            timeout_mode = WAIT_FOR_EVENT_READ_TIMEOUT;
         } else if(read_timeout < write_timeout) {
             timeout = read_timeout;
+            timeout_mode = WAIT_FOR_EVENT_READ_TIMEOUT;
         } else {
             timeout = write_timeout;
+            timeout_mode = WAIT_FOR_EVENT_WRITE_TIMEOUT;
         }
     } else if(e->flags & WAIT_FOR_READ) {
         DEBUG_MSG("set READ, read_timeout = %f", read_timeout);
         timeout = read_timeout;
+        timeout_mode = WAIT_FOR_EVENT_READ_TIMEOUT;
     } else if(e->flags & WAIT_FOR_WRITE) {
         DEBUG_MSG("set WRITE, write_timeout = %f", write_timeout);
         timeout = write_timeout;
+        timeout_mode = WAIT_FOR_EVENT_WRITE_TIMEOUT;
     }
 
   START_SELECT:
@@ -192,7 +201,7 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
     DEBUG_MSG("select returns %d", rc);
     if(rc == 0) {
         DEBUG_MSG("%s", "timeout");
-        return WAIT_FOR_EVENT_TIMEDOUT;
+        return timeout_mode;
     }
 
     if(rc < 0 || FD_ISSET(fd, &exceptfds)) {
@@ -606,6 +615,8 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
                 return ret;
             }
 
+            if( res == WAIT_FOR_EVENT_READ_TIMEOUT ) break;
+
             if(self->flags & (FLAG_INSIDE_TRANSACTION | FLAG_INSIDE_WATCH)) {
                 croak("reconnect disabled inside transaction or watch");
             }
@@ -616,7 +627,7 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
         if( res == WAIT_FOR_EVENT_OK && (cbt->ret.result || cbt->ret.error) ) Safefree(cbt);
         // else destructor will release cbt
 
-        if(res == WAIT_FOR_EVENT_TIMEDOUT) {
+        if(res == WAIT_FOR_EVENT_READ_TIMEOUT || res == WAIT_FOR_EVENT_WRITE_TIMEOUT) {
             snprintf(self->error, MAX_ERROR_SIZE, "Error while reading from Redis server: %s", strerror(EAGAIN));
             croak("%s", self->error);
         }
@@ -1254,7 +1265,7 @@ CODE:
     self->proccess_sub_count = 0;
     for(i = 0; i < cnt; i++) {
         while((res = wait_for_event(self, timeout, timeout)) == WAIT_FOR_EVENT_OK) ;
-        if(res == WAIT_FOR_EVENT_TIMEDOUT) break;
+        if(res == WAIT_FOR_EVENT_READ_TIMEOUT || res == WAIT_FOR_EVENT_WRITE_TIMEOUT) break;
         Redis__Fast_reconnect(self);
     }
     if(res == WAIT_FOR_EVENT_EXCEPTION) {
