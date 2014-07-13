@@ -8,7 +8,6 @@ use Test::SpawnRedisServer;
 my ($c, $srv) = redis();
 END { $c->() if $c }
 
-use Redis;
 my $redis = Redis::Fast->new(server => 'localhost:6379', reconnect=>1, cnx_timeout   => 0.2, read_timeout  => 1);
 
 unless (fork()) {
