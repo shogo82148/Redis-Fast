@@ -8,7 +8,7 @@ use Test::SpawnRedisServer;
 my ($c, $srv) = redis();
 END { $c->() if $c }
 
-my $redis = Redis::Fast->new(server => 'localhost:6379', reconnect=>1, cnx_timeout   => 0.2, read_timeout  => 1);
+my $redis = Redis::Fast->new(server => $srv, name => 'blpop_test', reconnect=>1, cnx_timeout   => 0.2, read_timeout  => 1);
 
 unless (fork()) {
     # it will exit with read timeout
