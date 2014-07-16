@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - fix wrong read timeout
+    - do not reconnect with read timeout
 
 0.09 2014-07-08T15:46:39Z
     - fix double free
