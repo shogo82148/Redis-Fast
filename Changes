@@ -4,6 +4,10 @@ Revision history for Redis
     - fix wrong read timeout
     - do not reconnect with read timeout
 
+0.10 2014-07-16T00:55:29Z
+    - no change
+    - I release it by mistake
+
 0.09 2014-07-08T15:46:39Z
     - fix double free
     - fix signal handling
