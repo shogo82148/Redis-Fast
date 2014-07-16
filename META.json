@@ -73,7 +73,7 @@
          "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
-   "version" : "0.09",
+   "version" : "0.11",
    "x_contributors" : [
       "sunnavy <sunnavy@bestpractical.com>",
       "U-LIFEBOOK\\Administrator <Administrator@LIFEBOOK.(none)>",
@@ -102,11 +102,11 @@
       "Steffen Mueller <smueller@cpan.org>",
       "Rafael Garcia-Suarez <rgs@consttype.org>",
       "Ãvar ArnfjÃ¶rÃ° Bjarmason <avarab@gmail.com>",
-      "Victor <victor@vsespb.ru>",
       "Celogeek <me@celogeek.com>",
       "xtab <x0r+github@x0r.fr>",
       "Ivan Kruglov <ivan.kruglov@yahoo.com>",
       "dams <dams@zarb.org>",
+      "Victor <victor@vsespb.ru>",
       "shogo82148 <ichinose-shogo@kayac.com>"
    ]
 }

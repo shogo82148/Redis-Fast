@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.11 2014-07-16T02:27:40Z
     - fix wrong read timeout
     - do not reconnect with read timeout
 
