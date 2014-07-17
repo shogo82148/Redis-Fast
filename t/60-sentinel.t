@@ -36,6 +36,13 @@ sleep 3;
 {
     # check basic sentinel command
     my $sentinel = Redis::Fast::Sentinel->new(server => $sentinel_addr);
+
+    use Data::Dumper;
+    my ($major, $minor, $revision) = split /\./, $sentinel->info->{redis_version};
+    if($major < 2 || ($major == 2 && $minor < 8)) {
+        plan skip_all => 'this test reqires Redis 2.8 or above';
+    }
+
     my $got = ($sentinel->get_masters())[0];
 
     cmp_deeply($got, superhashof({ name => 'mymaster',
