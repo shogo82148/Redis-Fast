@@ -17,6 +17,5 @@ eval { $redis->blpop("notakey", 5); };
 my $elapsed = tv_interval($start_time);
 
 cmp_ok( $elapsed, '>', 4, 'not too short' );
-cmp_ok( $elapsed, '<', 6, 'not too long' );
 
 done_testing;
