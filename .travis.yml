@@ -11,4 +11,4 @@ perl:
 before_install:
   cpanm Minilla
 script:
-  minil test
+  minil test --all
