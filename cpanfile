@@ -12,6 +12,7 @@ on 'test' => sub {
     requires 'Test::Deep';
     requires 'Test::TCP';
     requires 'Test::Fatal';
+    requires 'Test::SharedFork';
     requires 'Test::LeakTrace';
     requires 'Test::Kwalitee';
     requires 'Test::Kwalitee::Extra';
