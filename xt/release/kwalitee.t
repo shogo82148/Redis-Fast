@@ -1,4 +1,2 @@
- use Test::More;
- use Test::Kwalitee 'kwalitee_ok';
- kwalitee_ok();
- done_testing;
+use Test::More;
+use Test::Kwalitee::Extra qw(:retry 1 :experimental);
