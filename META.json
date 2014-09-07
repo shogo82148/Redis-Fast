@@ -6,7 +6,7 @@
    "dynamic_config" : 0,
    "generated_by" : "Minilla/v2.1.1, CPAN::Meta::Converter version 2.142060",
    "license" : [
-      "unknown"
+      "perl_5"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
@@ -53,6 +53,7 @@
             "File::Temp" : "0",
             "Test::Deep" : "0",
             "Test::Fatal" : "0",
+            "Test::Kwalitee" : "0",
             "Test::LeakTrace" : "0",
             "Test::More" : "0.98",
             "Test::TCP" : "0",
