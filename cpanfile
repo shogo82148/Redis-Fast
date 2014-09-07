@@ -13,5 +13,6 @@ on 'test' => sub {
     requires 'Test::Fatal';
     requires 'Try::Tiny';
     requires 'Test::LeakTrace';
+    requires 'Test::Kwalitee';
 };
 

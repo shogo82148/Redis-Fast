@@ -26,10 +26,10 @@ Redis::Fast - Perl binding for Redis database
     ## Enable auto-reconnect
     ## Try to reconnect every 500ms up to 60 seconds until success
     ## Die if you can't after that
-    my $redis = Redis::Fast->new(reconnect => 60);
+    my $redis = Redis::Fast->new(reconnect => 60, every => 500_000);
 
-    ## Try each 100ms upto 2 seconds (every is in milisecs)
-    my $redis = Redis::Fast->new(reconnect => 2, every => 100);
+    ## Try each 100ms upto 2 seconds (every is in microseconds)
+    my $redis = Redis::Fast->new(reconnect => 2, every => 100_000);
 
     ## Disable the automatic utf8 encoding => much more performance
     ## !!!! This will be the default after 2.000, see ENCODING below
