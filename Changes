@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.12 2014-09-08T16:19:11Z
     - every option is in microseconds now
     - fix some tests
     - add missing dependencies (Try::Tiny, Test::SharedFork)

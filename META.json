@@ -58,6 +58,7 @@
             "Test::Kwalitee::Extra" : "0",
             "Test::LeakTrace" : "0",
             "Test::More" : "0.98",
+            "Test::SharedFork" : "0",
             "Test::TCP" : "0"
          }
       }
@@ -74,7 +75,7 @@
          "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
-   "version" : "0.11",
+   "version" : "0.12",
    "x_contributors" : [
       "sunnavy <sunnavy@bestpractical.com>",
       "U-LIFEBOOK\\Administrator <Administrator@LIFEBOOK.(none)>",
