@@ -4,9 +4,9 @@
       "Ichinose Shogo <shogo82148@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v0.11.0, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Minilla/v2.1.1, CPAN::Meta::Converter version 2.142060",
    "license" : [
-      "unknown"
+      "perl_5"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
@@ -29,8 +29,6 @@
    "prereqs" : {
       "configure" : {
          "requires" : {
-            "CPAN::Meta" : "0",
-            "CPAN::Meta::Prereqs" : "0",
             "File::Which" : "0",
             "Module::Build" : "0.38",
             "Module::Build::XSUtil" : "0.02"
@@ -39,13 +37,15 @@
       "develop" : {
          "requires" : {
             "Test::CPAN::Meta" : "0",
-            "Test::MinimumVersion" : "0.10108",
+            "Test::MinimumVersion::Fast" : "0.04",
+            "Test::PAUSE::Permissions" : "0.04",
             "Test::Pod" : "1.41",
             "Test::Spellunker" : "v0.2.7"
          }
       },
       "runtime" : {
          "requires" : {
+            "Try::Tiny" : "0",
             "perl" : "5.008001"
          }
       },
@@ -54,10 +54,11 @@
             "File::Temp" : "0",
             "Test::Deep" : "0",
             "Test::Fatal" : "0",
+            "Test::Kwalitee" : "0",
+            "Test::Kwalitee::Extra" : "0",
             "Test::LeakTrace" : "0",
             "Test::More" : "0.98",
-            "Test::TCP" : "0",
-            "Try::Tiny" : "0"
+            "Test::TCP" : "0"
          }
       }
    },
@@ -90,7 +91,7 @@
       "Pedro Melo <melo@simplicidade.org>",
       "perlpong <calyx238@gmail.com>",
       "zhihong zhang <zzh_621@yahoo.com>",
-      "JoÃ£o Bolila <joao@bolila.com>",
+      "João Bolila <joao@bolila.com>",
       "Syohei YOSHIDA <syohex@gmail.com>",
       "Damien Krotkine <dkrotkine@weborama.com>",
       "hisaichi5518 <hisada.kazuki@gmail.com>",
@@ -101,12 +102,13 @@
       "Andreas Koenig <andk@cpan.org>",
       "Steffen Mueller <smueller@cpan.org>",
       "Rafael Garcia-Suarez <rgs@consttype.org>",
-      "Ãvar ArnfjÃ¶rÃ° Bjarmason <avarab@gmail.com>",
+      "Ævar Arnfjörð Bjarmason <avarab@gmail.com>",
       "Celogeek <me@celogeek.com>",
       "xtab <x0r+github@x0r.fr>",
       "Ivan Kruglov <ivan.kruglov@yahoo.com>",
       "dams <dams@zarb.org>",
       "Victor <victor@vsespb.ru>",
+      "bj5004 <bartosz.jakubski@hurra.com>",
       "shogo82148 <ichinose-shogo@kayac.com>"
    ]
 }

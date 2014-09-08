@@ -1,4 +1,5 @@
 requires 'perl', '5.008001';
+requires 'Try::Tiny';
 
 on 'configure' => sub{
     requires 'Module::Build::XSUtil' => '>=0.02';
@@ -11,7 +12,9 @@ on 'test' => sub {
     requires 'Test::Deep';
     requires 'Test::TCP';
     requires 'Test::Fatal';
-    requires 'Try::Tiny';
+    requires 'Test::SharedFork';
     requires 'Test::LeakTrace';
+    requires 'Test::Kwalitee';
+    requires 'Test::Kwalitee::Extra';
 };
 

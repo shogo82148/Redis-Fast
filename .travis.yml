@@ -8,4 +8,7 @@ perl:
   - "5.14"
   - "5.12"
   - "5.10"
-
+before_install:
+  cpanm Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
+script:
+  minil test --all
