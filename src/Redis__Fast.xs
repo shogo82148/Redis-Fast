@@ -228,6 +228,7 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
 
 static void Redis__Fast_connect_cb(redisAsyncContext* c, int status) {
     Redis__Fast self = (Redis__Fast)c->data;
+    DEBUG_MSG("connected status = %d", status);
     if(status != REDIS_OK) {
         // Connection Error!!
         // Redis context will close automatically
@@ -244,6 +245,7 @@ static void Redis__Fast_connect_cb(redisAsyncContext* c, int status) {
 static void Redis__Fast_disconnect_cb(redisAsyncContext* c, int status) {
     Redis__Fast self = (Redis__Fast)c->data;
     PERL_UNUSED_VAR(status);
+    DEBUG_MSG("disconnected status = %d", status);
     self->ac = NULL;
 }
 
