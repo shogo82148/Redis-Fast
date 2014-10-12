@@ -42,6 +42,7 @@ sub redis {
     loglevel debug
     logfile redis-server-$addr.log
   ");
+  $fh->print("maxclients $params{maxclients}\n") if $params{maxclients};
   $fh->flush;
 
   Test::More::diag("Spawn Redis at $addr, cfg $fn") if $ENV{REDIS_DEBUG};
