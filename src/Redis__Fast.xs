@@ -47,6 +47,7 @@ typedef struct redis_fast_s {
     double write_timeout;
     int current_database;
     int need_recoonect;
+    int is_connected;
     SV* on_connect;
     SV* on_build_sock;
     SV* data;
@@ -234,11 +235,7 @@ static void Redis__Fast_connect_cb(redisAsyncContext* c, int status) {
         // Redis context will close automatically
         self->ac = NULL;
     } else {
-        if(self->on_connect){
-            dSP;
-            PUSHMARK(SP);
-            call_sv(self->on_connect, G_DISCARD | G_NOARGS);
-        }
+        self->is_connected = 1;
     }
 }
 
@@ -282,6 +279,7 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     }
     ac->data = (void*)self;
     self->ac = ac;
+    self->is_connected = 0;
 
     Attach(ac);
     redisAsyncSetConnectCallback(ac, (redisConnectCallback*)Redis__Fast_connect_cb);
@@ -292,12 +290,22 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     if(self->cnx_timeout > 0 && self->cnx_timeout < timeout) {
         timeout = self->cnx_timeout;
     }
-    res = wait_for_event(self, timeout, timeout);
-    if(res != WAIT_FOR_EVENT_OK) {
-        DEBUG_MSG("error: %d", res);
-        redisAsyncFree(self->ac);
-        self->ac = NULL;
-        return NULL;
+    while(!self->is_connected) {
+        res = wait_for_event(self, timeout, timeout);
+        if(self->ac == NULL) {
+            return NULL;
+        }
+        if(res != WAIT_FOR_EVENT_OK) {
+            DEBUG_MSG("error: %d", res);
+            redisAsyncFree(self->ac);
+            self->ac = NULL;
+            return NULL;
+        }
+    }
+    if(self->on_connect){
+        dSP;
+        PUSHMARK(SP);
+        call_sv(self->on_connect, G_DISCARD | G_NOARGS);
     }
 
     DEBUG_MSG("%s", "finsih");
