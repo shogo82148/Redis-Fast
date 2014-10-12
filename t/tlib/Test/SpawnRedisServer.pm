@@ -31,7 +31,7 @@ sub redis {
   my $addr = "127.0.0.1:$local_port";
 
   unlink("redis-server-$addr.log");
-  unlink('dump.rdb');
+  unlink('dump.rdb') unless $params{skip_unlink};
 
   $fh->print("
     timeout $params{timeout}
@@ -41,6 +41,7 @@ sub redis {
     bind 127.0.0.1
     loglevel debug
     logfile redis-server-$addr.log
+    rdbcompression no
   ");
   $fh->flush;
 
