@@ -16,7 +16,7 @@ END { $c->() if $c }
 ok my $r1 = Redis::Fast->new(
     server => $srv,
     name          => 'my-first-connection',
-    reconnect     => 20,
+    reconnect     => 1,
     every         => 1000,
     on_connect => sub {
         my ( $redis ) = @_;
@@ -29,7 +29,7 @@ like(
       my $r2 = Redis::Fast->new(
           server => $srv,
           name          => 'my-second-connection',
-          reconnect     => 20,
+          reconnect     => 1,
           every         => 1000,
           on_connect => sub {
               my ( $redis ) = @_;
@@ -37,7 +37,7 @@ like(
           },
       );
   },
-  qr/ERR max number of clients reached/, 'second connection is fail',
+  qr/Could not connect to Redis server at/, 'second connection is fail',
 );
 
 ## All done
