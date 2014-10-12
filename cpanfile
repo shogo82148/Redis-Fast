@@ -1,5 +1,6 @@
 requires 'perl', '5.008001';
 requires 'Try::Tiny';
+requires 'Time::HiRes';
 
 on 'configure' => sub{
     requires 'Module::Build::XSUtil' => '>=0.02';
@@ -16,5 +17,5 @@ on 'test' => sub {
     requires 'Test::LeakTrace';
     requires 'Test::Kwalitee';
     requires 'Test::Kwalitee::Extra';
+    requires 'Digest::SHA';
 };
-
