@@ -134,6 +134,45 @@ subtest "Reconnect during transaction" => sub {
   is($r->exists('reconnect_2'), 0, 'key "reconnect_2" should not exist');
 };
 
+subtest "exec does not trigger reconnect" => sub {
+  $c->();    ## Make previous server is dead
+
+  my $port = empty_port();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "spawn redis on port $port");
+  ok(my $r = Redis::Fast->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
+
+  ok($r->multi(), 'start transacion');
+  ok($r->set('reconnect_1' => 1), 'set first key');
+
+  $c->();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "respawn redis on port $port");
+
+  like(exception { $r->exec() }, qr{reconnect disabled inside transaction}, 'exec');
+
+  $r->connect(); #reconnect
+  is($r->exists('reconnect_1'), 0, 'key "reconnect_1" should not exist');
+};
+
+subtest "multi should trigger reconnect" => sub {
+  $c->();    ## Make previous server is dead
+
+  my $port = empty_port();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "spawn redis on port $port");
+  ok(my $r = Redis::Fast->new(reconnect => 3, server => $srv), 'connected to our test redis-server');
+
+  $c->();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "respawn redis on port $port");
+
+  ok($r->multi(), 'start transacion');
+  ok($r->set('reconnect' => 1), 'set key');
+  ok($r->exec(), 'execute transaction');
+
+  $c->();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "respawn redis on port $port");
+
+  ok($r->set('reconnect' => 1), 'setting key should not fail');
+};
+
 subtest "Reconnect works after WATCH + MULTI + EXEC" => sub {
   $c->();    ## Make previous server is dead
 
