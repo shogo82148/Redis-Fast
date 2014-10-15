@@ -43,6 +43,7 @@ sub redis {
     logfile redis-server-$addr.log
   ");
   $fh->print("maxclients $params{maxclients}\n") if $params{maxclients};
+  $fh->print("requirepass $params{password}\n") if $params{password};
   $fh->flush;
 
   Test::More::diag("Spawn Redis at $addr, cfg $fn") if $ENV{REDIS_DEBUG};
@@ -54,7 +55,7 @@ sub redis {
   }
 
   my ($ver, $c);
-  eval { ($ver, $c) = spawn_server($redis_server_path, $fn, $addr) };
+  eval { ($ver, $c) = spawn_server($redis_server_path, $fn, $addr, $params{password}) };
   if (my $e = $@) {
     reap();
     Test::More::plan skip_all => "Could not start redis-server: $@";
@@ -120,7 +121,7 @@ sub sentinel {
   }
 
   my ($ver, $c);
-  eval { ($ver, $c) = spawn_server($redis_server_path, $fn, '--sentinel', $addr) };
+  eval { ($ver, $c) = spawn_server($redis_server_path, $fn, '--sentinel', $addr, undef) };
   if (my $e = $@) {
     reap();
     Test::More::plan skip_all => "Could not start redis-sentinel: $@";
@@ -147,13 +148,17 @@ sub sentinel {
 }
 
 sub spawn_server {
+  my $password = pop;
   my $addr = pop;
   my $pid  = fork();
   if ($pid) {    ## Parent
     require Test::More;
     Test::More::diag("Starting server with pid $pid") if $ENV{REDIS_DEBUG};
 
-    my $redis   = Redis::Fast->new(server => $addr, reconnect => 5, every => 200);
+    my %args = (server => $addr, reconnect => 5, every => 200);
+    $args{password} = $password if defined $password;
+
+    my $redis   = Redis::Fast->new(%args);
     my $version = $redis->info->{redis_version};
     my $alive   = $$;
     $redis->quit;
