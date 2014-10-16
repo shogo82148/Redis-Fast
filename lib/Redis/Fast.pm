@@ -55,6 +55,27 @@ sub _new_on_connect_cb {
 
     return sub {
         my $reconnect_stash = $self->__get_reconnect;
+        if(defined $password) {
+            my $err;
+            $self->__set_reconnect(0);
+            try {
+                $self->auth($password);
+            } catch {
+                $err = $_;
+            };
+            if(defined $err) {
+                if($err =~ /ERR invalid password/) {
+                    # password setting is incorrect, no need to reconnect
+                    die("Redis server refused password");
+                } else {
+                    # it might be network error
+                    # invoke reconnect
+                    $self->__set_reconnect($reconnect_stash);
+                    return ;
+                }
+            }
+        }
+
         try {
             # disable reconnection while executing on_connect handler
             $self->__set_reconnect(0);
