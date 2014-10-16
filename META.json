@@ -45,12 +45,14 @@
       },
       "runtime" : {
          "requires" : {
+            "Time::HiRes" : "0",
             "Try::Tiny" : "0",
             "perl" : "5.008001"
          }
       },
       "test" : {
          "requires" : {
+            "Digest::SHA" : "0",
             "File::Temp" : "0",
             "Test::Deep" : "0",
             "Test::Fatal" : "0",
@@ -75,7 +77,7 @@
          "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
-   "version" : "0.12",
+   "version" : "0.13",
    "x_contributors" : [
       "sunnavy <sunnavy@bestpractical.com>",
       "U-LIFEBOOK\\Administrator <Administrator@LIFEBOOK.(none)>",

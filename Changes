@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.13 2014-10-16T11:07:31Z
     - support password option
     - fix deep recursion when maxclients is reached and reconnect, name, on_connect parameters used #21
     - fix reconnect disabled inside transaction #22
