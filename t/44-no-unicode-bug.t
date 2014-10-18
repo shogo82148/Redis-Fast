@@ -4,14 +4,14 @@ use warnings;
 use strict;
 use Test::More;
 use Test::Fatal;
-use Redis;
+use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
 my ($c, $srv) = redis();
 END { $c->() if $c }
 
-ok(my $r = Redis->new(server => $srv), 'connected to our test redis-server');
+ok(my $r = Redis::Fast->new(server => $srv), 'connected to our test redis-server');
 my $s2 = my $s1 = "test\x{80}";
 utf8::upgrade($s1); # no need to use 'use utf8' to call this
 utf8::downgrade($s2); # no need to use 'use utf8' to call this
