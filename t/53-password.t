@@ -23,7 +23,7 @@ subtest 'no password' => sub {
 
     like(
         exception { $o->get('foo') },
-        qr/\[get\] NOAUTH Authentication required/,
+        qr/\[get\] (NOAUTH Authentication required|ERR operation not permitted)/,
         'but cannot execute any command except `auth`',
     );
 };
