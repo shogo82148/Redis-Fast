@@ -86,7 +86,7 @@ Redis::Fast - Perl binding for Redis database
 # DESCRIPTION
 
 `Redis::Fast` is a wrapper around Salvatore Sanfilippo's
-[hiredis](https://github.com/antirez/hiredis) C client.
+[hiredis](https://github.com/redis/hiredis) C client.
 It is compatible with [Redis.pm](https://github.com/melo/perl-redis).
 
 This version supports protocol 2.x (multi-bulk) or later of Redis available at

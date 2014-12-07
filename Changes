@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.14 2014-12-07T13:34:06Z
     - Redis::Fast is now compatible with Redis.pm 1.976
     - fix a link in pod because hiredis has moved(thanks @Csson !)
     - fix the test of password
