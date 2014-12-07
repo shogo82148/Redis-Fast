@@ -1068,6 +1068,9 @@ CODE:
     Newx(argvlen, sizeof(size_t) * argc, size_t);
 
     for (i = 0; i < argc; i++) {
+        if(!sv_utf8_downgrade(ST(i + 1), 1)) {
+            croak("command sent is not an octet sequence in the native encoding (Latin-1). Consider using debug mode to see the command itself.");
+        }
         argv[i] = SvPV(ST(i + 1), len);
         argvlen[i] = len;
     }
