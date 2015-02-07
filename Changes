@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - use gmake for DragonflyBSD(thanks @nise-nabe)
+    - support topic "0" in psubscribe
 
 0.14 2014-12-07T13:34:06Z
     - Redis::Fast is now compatible with Redis.pm 1.976
