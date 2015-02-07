@@ -18,7 +18,7 @@ sub new {
     );
 
     my $make;
-    if ($^O =~ m/bsd$/ && $^O !~ m/gnukfreebsd$/) {
+    if ($^O =~ m/(bsd|dragonfly)$/ && $^O !~ m/gnukfreebsd$/) {
         my $gmake = which('gmake');
         unless (defined $gmake) {
             print "'gmake' is necessary for BSD platform.\n";
