@@ -131,8 +131,8 @@ subtest 'basics' => sub {
 
 subtest 'zero_topic' => sub {
   my %got;
-  my $pub = Redis->new(server => $srv);
-  my $sub = Redis->new(server => $srv);
+  my $pub = Redis::Fast->new(server => $srv);
+  my $sub = Redis::Fast->new(server => $srv);
 
   my $db_size = -1;
   $sub->dbsize(sub { $db_size = $_[0] });
