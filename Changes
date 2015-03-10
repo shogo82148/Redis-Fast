@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.15 2015-03-10T14:10:54Z
     - use gmake for DragonflyBSD(thanks @nise-nabe)
     - support topic "0" in psubscribe
     - hiredis is v0.12.1 now
