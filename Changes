@@ -4,6 +4,8 @@ Revision history for Redis
     - use gmake for DragonflyBSD(thanks @nise-nabe)
     - support topic "0" in psubscribe
     - hiredis is v0.12.1 now
+    - default connection unlimited time (-1)
+    - use cnx_timeout for the connection instead of every
 
 0.14 2014-12-07T13:34:06Z
     - Redis::Fast is now compatible with Redis.pm 1.976
