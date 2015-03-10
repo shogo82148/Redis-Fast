@@ -290,8 +290,8 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     redisAsyncSetDisconnectCallback(ac, (redisDisconnectCallback*)Redis__Fast_disconnect_cb);
 
     // wait to connect...
-    timeout = self->every / 1000000.0;
-    if(self->cnx_timeout > 0 && self->cnx_timeout < timeout) {
+    timeout = -1;
+    if(self->cnx_timeout) {
         timeout = self->cnx_timeout;
     }
     while(!self->is_connected) {
