@@ -46,10 +46,12 @@ cmp_ok($o->get('foo'), 'eq', 'baz', 'get foo = baz');
 
 my $euro = "\x{20ac}";
 ok ord($euro) > 255, "assume \$eur is wide character";
-ok ! eval { $o->set(utf8 => $euro); 1 }, "accepts only binary data, thus crashes on strings with characters > 255";
-like "$@", qr/command sent is not an octet sequence in the native encoding/i, ".. and crashes on syswrite call";
+ok $o->set(utf8 => $euro), "we don't care about the content";
 
-ok ! defined $o->get('utf8'), ".. and does not write actual data";
+my $check_euro = $o->get('utf8');
+utf8::decode($check_euro);
+ok ord($check_euro) > 255, "assume \$check_eur is wide character";
+is $check_euro,$euro, ".. and the data is here";
 
 ok($o->set('test-undef' => 42), 'set test-undef');
 ok($o->exists('test-undef'), 'exists undef');
