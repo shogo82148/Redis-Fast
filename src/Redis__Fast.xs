@@ -277,8 +277,9 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
         ac = redisAsyncConnect(self->hostname, self->port);
     }
 
-    if(!ac) {
+    if(ac->err) {
         DEBUG_MSG("%s", "fail to allocate");
+	redisAsyncFree(ac);
         return NULL;
     }
     ac->data = (void*)self;
