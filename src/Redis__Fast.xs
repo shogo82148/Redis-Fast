@@ -277,6 +277,10 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
         ac = redisAsyncConnect(self->hostname, self->port);
     }
 
+    if(ac == NULL) {
+        DEBUG_MSG("%s", "allocation error");
+        return NULL;
+    }
     if(ac->err) {
         DEBUG_MSG("connection error: %s", ac->errstr);
 	redisAsyncFree(ac);
