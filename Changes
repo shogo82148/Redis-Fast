@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.16 2015-03-12T02:17:45Z
     - fix bad connection error handling #39 thx @celogeek
 
 0.15 2015-03-10T14:10:54Z
