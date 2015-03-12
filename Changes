@@ -1,6 +1,7 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - fix bad connection error handling #39 thx @celogeek
 
 0.15 2015-03-10T14:10:54Z
     - use gmake for DragonflyBSD(thanks @nise-nabe)
