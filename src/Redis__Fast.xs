@@ -278,7 +278,7 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     }
 
     if(ac->err) {
-        DEBUG_MSG("%s", "fail to allocate");
+        DEBUG_MSG("connection error: %s", ac->errstr);
 	redisAsyncFree(ac);
         return NULL;
     }
