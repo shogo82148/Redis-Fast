@@ -30,9 +30,9 @@ sub new {
     }
     if (-e '.git') {
         unless (-e 'deps/hiredis/Makefile') {
-            die 'This repository has submodules and needs "git submodule update --init" to be built'
+            $self->do_system('git','submodule','update','--init');
         }
-    }       
+    }   
     $self->do_system($make, '-C', 'deps/hiredis', 'static');
     return $self;
 }
