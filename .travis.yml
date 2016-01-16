@@ -12,6 +12,8 @@ perl:
 env:
   - REDIS_VERSION=3.0.5
   - REDIS_VERSION=2.8.23
+  - REDIS_VERSION=3.0.5 LC_ALL=ja_JP.UTF-8
+  - REDIS_VERSION=2.8.23 LC_ALL=ja_JP.UTF-8
 install:
   - wget https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz && tar xzf $REDIS_VERSION.tar.gz && make -C redis-$REDIS_VERSION
   - cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
