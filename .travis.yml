@@ -13,7 +13,11 @@ env:
   - REDIS_VERSION=3.0.5
   - REDIS_VERSION=2.8.23
 before_install:
-  - eval $(curl https://travis-perl.github.io/init) --auto
+  - git clone git://github.com/travis-perl/helpers ~/travis-perl-helpers
+  - source ~/travis-perl-helpers/init
+  - build-perl
+  - perl -V
+  - cpan-install App::cpanminus
 install:
   - wget https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz && tar xzf $REDIS_VERSION.tar.gz && make -C redis-$REDIS_VERSION
   - cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
