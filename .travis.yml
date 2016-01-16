@@ -15,7 +15,12 @@ env:
 before_install:
   - curl -L http://install.perlbrew.pl | bash
   - source ~/perl5/perlbrew/etc/bashrc
-  - perlbrew install $TRAVIS_PERL_VERSION && perlbrew use $TRAVIS_PERL_VERSION
+  - git clone git://github.com/travis-perl/helpers ~/travis-perl-helpers
+  - source ~/travis-perl-helpers/init
+  - [[ $TRAVIS_OS_NAME = osx ]] && export REBUILD_PERL=1
+  - build-perl
+  - perl -V
+  - cpan-install App::cpanminus
 install:
   - wget https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz && tar xzf $REDIS_VERSION.tar.gz && make -C redis-$REDIS_VERSION
   - cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
