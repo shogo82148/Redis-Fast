@@ -10,10 +10,10 @@ perl:
   - "5.12"
   - "5.10"
 env:
-  - REDIS_VERSION=3.0.5
-  - REDIS_VERSION=2.8.23
-  - REDIS_VERSION=3.0.5 LC_ALL=ja_JP.UTF-8
-  - REDIS_VERSION=2.8.23 LC_ALL=ja_JP.UTF-8
+  - REDIS_VERSION=3.0.5 TEST_LANG=en_US.UTF-8
+  - REDIS_VERSION=2.8.23 TEST_LANG=en_US.UTF-8
+  - REDIS_VERSION=3.0.5 TEST_LANG=ja_JP.UTF-8
+  - REDIS_VERSION=2.8.23 TEST_LANG=ja_JP.UTF-8
 before_install:
   - sudo apt-get update && sudo apt-get --reinstall install -qq language-pack-en language-pack-ja
 install:
@@ -22,5 +22,5 @@ install:
   - cpanm --quiet --installdeps --notest .
 script:
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH redis-server --version
-  - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH minil test --all
+  - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH LC_ALL=$TEST_LANG minil test --all
 sudo: true
