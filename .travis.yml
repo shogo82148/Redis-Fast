@@ -15,7 +15,7 @@ env:
 before_install:
   - curl -L http://install.perlbrew.pl | bash
   - source ~/perl5/perlbrew/etc/bashrc
-  - perlbrew use $TRAVIS_PERL_VERSION
+  - perlbrew install $TRAVIS_PERL_VERSION && perlbrew use $TRAVIS_PERL_VERSION
 install:
   - wget https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz && tar xzf $REDIS_VERSION.tar.gz && make -C redis-$REDIS_VERSION
   - cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
