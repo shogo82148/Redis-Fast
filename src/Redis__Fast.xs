@@ -20,6 +20,9 @@
 #define WAIT_FOR_EVENT_WRITE_TIMEOUT 2
 #define WAIT_FOR_EVENT_EXCEPTION 3
 
+#define FLAG_INSIDE_TRANSACTION 0x01
+#define FLAG_INSIDE_WATCH       0x02
+
 //#define DEBUG
 #if defined(DEBUG)
 #define DEBUG_MSG(fmt, ...) \
@@ -55,10 +58,7 @@ typedef struct redis_fast_s {
     int is_subscriber;
     int expected_subs;
     pid_t pid;
-    enum {
-        FLAG_INSIDE_TRANSACTION = 0x01,
-        FLAG_INSIDE_WATCH = 0x02,
-    } flags;
+    int flags;
 } redis_fast_t, *Redis__Fast;
 
 typedef struct redis_fast_reply_s {
