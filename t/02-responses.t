@@ -29,10 +29,11 @@ sub r {
                 print {$remote} $res;
                 $pm->finish;
             }
+            $pm->wait_all_children;
         },
         client => sub {
             my $path = shift;
-            ok(my $r = Redis::Fast->new(sock => $path), 'connected to our test redis-server');
+            ok(my $r = Redis::Fast->new(sock => $path, reconnect => 1), 'connected to our test redis-server');
             $test->($r);
         },
     );
