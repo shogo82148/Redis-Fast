@@ -6,31 +6,33 @@ use Test::More;
 use Test::Fatal;
 use Test::Deep;
 use Redis::Fast;
-use IO::Socket::INET;
-use Test::TCP;
-
+use IO::Socket::UNIX;
+use Test::UNIXSock;
+use Parallel::ForkManager;
 
 sub r {
     my ($response, $test) = @_;
-    test_tcp(
+    test_unix_sock(
         server => sub {
-            my $port = shift;
-            my $sock = IO::Socket::INET->new(
-                LocalPort => $port,
-                LocalAddr => '127.0.0.1',
-                Proto     => 'tcp',
-                Listen    => 5,
+            my $path = shift;
+            my $sock = IO::Socket::UNIX->new(
+                Local     => $path,
+                Listen    => 1,
                 Type      => SOCK_STREAM,
             ) or die "Cannot open server socket: $!";
 
             my $res = join '', map "$_\r\n", @$response;
+            my $pm = Parallel::ForkManager->new(10);
             while(my $remote = $sock->accept) {
+                my $pid = $pm->start and next;
+                <$remote>; # ignore commands from client
                 print {$remote} $res;
+                $pm->finish;
             }
         },
         client => sub {
-            my $port = shift;
-            ok(my $r = Redis::Fast->new(server => "127.0.0.1:$port"), 'connected to our test redis-server');
+            my $path = shift;
+            ok(my $r = Redis::Fast->new(sock => $path), 'connected to our test redis-server');
             $test->($r);
         },
     );
