@@ -491,30 +491,32 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
     if (reply) {
         self->flags = (self->flags | cbt->on_flags) & cbt->off_flags;
 
-        dSP;
+        {
+            dSP;
 
-        ENTER;
-        SAVETMPS;
+            ENTER;
+            SAVETMPS;
 
-        if(cbt->custom_decode) {
-            result = (cbt->custom_decode)(self, (redisReply*)reply, cbt->collect_errors);
-        } else {
-            result = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
+            if(cbt->custom_decode) {
+                result = (cbt->custom_decode)(self, (redisReply*)reply, cbt->collect_errors);
+            } else {
+                result = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
+            }
+
+            sv_undef = sv_2mortal(newSV(0));
+            if(result.result == NULL) result.result = sv_undef;
+            if(result.error == NULL) result.error = sv_undef;
+
+            PUSHMARK(SP);
+            XPUSHs(result.result);
+            XPUSHs(result.error);
+            PUTBACK;
+
+            call_sv(cbt->cb, G_DISCARD);
+
+            FREETMPS;
+            LEAVE;
         }
-
-        sv_undef = sv_2mortal(newSV(0));
-        if(result.result == NULL) result.result = sv_undef;
-        if(result.error == NULL) result.error = sv_undef;
-
-        PUSHMARK(SP);
-        XPUSHs(result.result);
-        XPUSHs(result.error);
-        PUTBACK;
-
-        call_sv(cbt->cb, G_DISCARD);
-
-        FREETMPS;
-        LEAVE;
     }
 
     SvREFCNT_dec(cbt->cb);
