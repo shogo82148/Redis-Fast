@@ -707,10 +707,15 @@ static redis_fast_reply_t Redis__Fast_info_custom_decode(Redis__Fast self, redis
             sep = (char*)memchr(str, ':', linelen);
             if(str[0] != '#' && sep != NULL) {
                 SV* val;
+                SV** ret;
                 size_t keylen;
                 keylen = sep - str;
                 val = newSVpvn(sep + 1, linelen - keylen - 1);
-                hv_store(hv, str, keylen, val, 0);
+                ret = hv_store(hv, str, keylen, val, 0);
+                if (ret == NULL) {
+                    SvREFCNT_dec(val);
+                    croak("failed to hv_store");
+                }
             }
             if(line == NULL) {
                 break;
