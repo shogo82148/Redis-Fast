@@ -32,7 +32,6 @@ sub r {
         },
         client => sub {
             my $path = shift;
-            warn 'connect';
             ok(my $r = Redis::Fast->new(sock => $path), 'connected to our test redis-server');
             $test->($r);
         },
