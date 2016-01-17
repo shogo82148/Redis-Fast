@@ -20,6 +20,9 @@
 #define WAIT_FOR_EVENT_WRITE_TIMEOUT 2
 #define WAIT_FOR_EVENT_EXCEPTION 3
 
+#define FLAG_INSIDE_TRANSACTION 0x01
+#define FLAG_INSIDE_WATCH       0x02
+
 //#define DEBUG
 #if defined(DEBUG)
 #define DEBUG_MSG(fmt, ...) \
@@ -55,10 +58,7 @@ typedef struct redis_fast_s {
     int is_subscriber;
     int expected_subs;
     pid_t pid;
-    enum {
-        FLAG_INSIDE_TRANSACTION = 0x01,
-        FLAG_INSIDE_WATCH = 0x02,
-    } flags;
+    int flags;
 } redis_fast_t, *Redis__Fast;
 
 typedef struct redis_fast_reply_s {
@@ -491,30 +491,32 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
     if (reply) {
         self->flags = (self->flags | cbt->on_flags) & cbt->off_flags;
 
-        dSP;
+        {
+            dSP;
 
-        ENTER;
-        SAVETMPS;
+            ENTER;
+            SAVETMPS;
 
-        if(cbt->custom_decode) {
-            result = (cbt->custom_decode)(self, (redisReply*)reply, cbt->collect_errors);
-        } else {
-            result = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
+            if(cbt->custom_decode) {
+                result = (cbt->custom_decode)(self, (redisReply*)reply, cbt->collect_errors);
+            } else {
+                result = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
+            }
+
+            sv_undef = sv_2mortal(newSV(0));
+            if(result.result == NULL) result.result = sv_undef;
+            if(result.error == NULL) result.error = sv_undef;
+
+            PUSHMARK(SP);
+            XPUSHs(result.result);
+            XPUSHs(result.error);
+            PUTBACK;
+
+            call_sv(cbt->cb, G_DISCARD);
+
+            FREETMPS;
+            LEAVE;
         }
-
-        sv_undef = sv_2mortal(newSV(0));
-        if(result.result == NULL) result.result = sv_undef;
-        if(result.error == NULL) result.error = sv_undef;
-
-        PUSHMARK(SP);
-        XPUSHs(result.result);
-        XPUSHs(result.error);
-        PUTBACK;
-
-        call_sv(cbt->cb, G_DISCARD);
-
-        FREETMPS;
-        LEAVE;
     }
 
     SvREFCNT_dec(cbt->cb);
@@ -667,6 +669,7 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
 
         if(res == WAIT_FOR_EVENT_READ_TIMEOUT || res == WAIT_FOR_EVENT_WRITE_TIMEOUT) {
             snprintf(self->error, MAX_ERROR_SIZE, "Error while reading from Redis server: %s", strerror(EAGAIN));
+            errno = EAGAIN;
             croak("%s", self->error);
         }
         if(!self->ac) {
@@ -705,10 +708,15 @@ static redis_fast_reply_t Redis__Fast_info_custom_decode(Redis__Fast self, redis
             sep = (char*)memchr(str, ':', linelen);
             if(str[0] != '#' && sep != NULL) {
                 SV* val;
+                SV** ret;
                 size_t keylen;
                 keylen = sep - str;
                 val = newSVpvn(sep + 1, linelen - keylen - 1);
-                hv_store(hv, str, keylen, val, 0);
+                ret = hv_store(hv, str, keylen, val, 0);
+                if (ret == NULL) {
+                    SvREFCNT_dec(val);
+                    croak("failed to hv_store");
+                }
             }
             if(line == NULL) {
                 break;
