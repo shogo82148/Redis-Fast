@@ -1138,7 +1138,6 @@ CODE:
             if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
         }
         DEBUG_MSG("%s", "finish");
-        self->is_connected = 0;
         self->ac = NULL;
         ST(0) = sv_2mortal(newSViv(1));
         XSRETURN(1);
