@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-#include <sys/select.h>
+#include <poll.h>
 #include <sys/socket.h>
 
 #define MAX_ERROR_SIZE 256
@@ -151,11 +151,11 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
     redisContext *c;
     int fd;
     redis_fast_event_t *e;
-    fd_set readfds, writefds, exceptfds;
-    struct timeval t;
+    struct pollfd pollfd;
     int rc;
     double timeout = -1;
     int timeout_mode = WAIT_FOR_EVENT_WRITE_TIMEOUT;
+    int ms;
 
     if(self==NULL) return WAIT_FOR_EVENT_EXCEPTION;
     if(self->ac==NULL) return WAIT_FOR_EVENT_EXCEPTION;
@@ -194,37 +194,48 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
         timeout_mode = WAIT_FOR_EVENT_WRITE_TIMEOUT;
     }
 
-  START_SELECT:
-    t.tv_sec = (int)timeout;
-    t.tv_usec = (timeout - (int)timeout) * 1000000;
-
+  START_POLL:
+    if (timeout < 0) {
+        ms = -1;
+    } else {
+        ms = (int)(timeout * 1000 + 0.999);
+    }
     DEBUG_MSG("select start, timeout is %f", timeout);
-    FD_ZERO(&readfds); if(e->flags & WAIT_FOR_READ) { FD_SET(fd, &readfds); }
-    FD_ZERO(&writefds); if(e->flags & WAIT_FOR_WRITE) { FD_SET(fd, &writefds); }
-    FD_ZERO(&exceptfds); FD_SET(fd, &exceptfds);
-    rc = select(fd + 1, &readfds, &writefds, &exceptfds, timeout < 0 ? NULL : &t);
-    DEBUG_MSG("select returns %d", rc);
+    pollfd.fd = fd;
+    pollfd.events = 0;
+    pollfd.revents = 0;
+    if(e->flags & WAIT_FOR_READ) { pollfd.events |= POLLIN; }
+    if(e->flags & WAIT_FOR_WRITE) { pollfd.events |= POLLOUT; }
+    rc = poll(&pollfd, 1, ms);
+    DEBUG_MSG("poll returns %d", rc);
     if(rc == 0) {
         DEBUG_MSG("%s", "timeout");
         return timeout_mode;
     }
 
-    if(rc < 0 || FD_ISSET(fd, &exceptfds)) {
-        DEBUG_MSG("%s", "exception!!");
+    if(rc < 0) {
+        DEBUG_MSG("exception: %s", strerror(errno));
         if( errno == EINTR ) {
             PERL_ASYNC_CHECK();
             DEBUG_MSG("%s", "recieved interrupt. retry wait_for_event");
-            goto START_SELECT;
+            goto START_POLL;
         }
         return WAIT_FOR_EVENT_EXCEPTION;
     }
-    if(self->ac && FD_ISSET(fd, &readfds)) {
+    if(self->ac && (pollfd.revents & POLLIN) != 0) {
         DEBUG_MSG("ready to %s", "read");
         redisAsyncHandleRead(self->ac);
     }
-    if(self->ac && FD_ISSET(fd, &writefds)) {
+    if(self->ac && (pollfd.revents & (POLLOUT|POLLHUP)) != 0) {
         DEBUG_MSG("ready to %s", "write");
         redisAsyncHandleWrite(self->ac);
+    }
+    if((pollfd.revents & (POLLERR|POLLNVAL)) != 0) {
+        DEBUG_MSG(
+            "exception: %s%s",
+            (pollfd.revents & POLLERR) ? "POLLERR " : "",
+            (pollfd.revents & POLLNVAL) ? "POLLNVAL " : "");
+        return WAIT_FOR_EVENT_EXCEPTION;
     }
 
     DEBUG_MSG("%s", "finish");
@@ -393,7 +404,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
 
 static void Redis__Fast_reconnect(Redis__Fast self) {
     DEBUG_MSG("%s", "start");
-    if(!self->ac && self->reconnect) {
+    if(self->is_connected && !self->ac && self->reconnect) {
         DEBUG_MSG("%s", "connection not found. reconnect");
         Redis__Fast_connect(self);
     }
@@ -1109,7 +1120,7 @@ PREINIT:
     redis_fast_sync_cb_t *cbt;
 CODE:
 {
-    DEBUG_MSG("%s", "start");
+    DEBUG_MSG("%s", "start QUIT");
     if(self->ac) {
         Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
         cbt->ret.result = NULL;
@@ -1127,6 +1138,7 @@ CODE:
             if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
         }
         DEBUG_MSG("%s", "finish");
+        self->ac = NULL;
         ST(0) = sv_2mortal(newSViv(1));
         XSRETURN(1);
     } else {
@@ -1140,15 +1152,19 @@ void
 __shutdown(Redis::Fast self)
 CODE:
 {
+    DEBUG_MSG("%s", "start SHUTDOWN");
     if(self->ac) {
         redisAsyncCommand(
             self->ac, NULL, NULL, "SHUTDOWN"
             );
         redisAsyncDisconnect(self->ac);
         _wait_all_responses(self);
+        self->is_connected = 0;
+        self->ac = NULL;
         ST(0) = sv_2mortal(newSViv(1));
         XSRETURN(1);
     } else {
+        DEBUG_MSG("%s", "redis server has alread shutdown");
         XSRETURN(0);
     }
 }
