@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-#include <sys/select.h>
+#include <poll.h>
 #include <sys/socket.h>
 
 #define MAX_ERROR_SIZE 256
@@ -151,11 +151,11 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
     redisContext *c;
     int fd;
     redis_fast_event_t *e;
-    fd_set readfds, writefds, exceptfds;
-    struct timeval t;
+    struct pollfd pollfd;
     int rc;
     double timeout = -1;
     int timeout_mode = WAIT_FOR_EVENT_WRITE_TIMEOUT;
+    int ms;
 
     if(self==NULL) return WAIT_FOR_EVENT_EXCEPTION;
     if(self->ac==NULL) return WAIT_FOR_EVENT_EXCEPTION;
@@ -194,35 +194,47 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
         timeout_mode = WAIT_FOR_EVENT_WRITE_TIMEOUT;
     }
 
-  START_SELECT:
-    t.tv_sec = (int)timeout;
-    t.tv_usec = (timeout - (int)timeout) * 1000000;
-
+  START_POLL:
+    if (timeout < 0) {
+        ms = -1;
+    } else {
+        ms = (int)(timeout * 1000 + 0.999);
+    }
     DEBUG_MSG("select start, timeout is %f", timeout);
-    FD_ZERO(&readfds); if(e->flags & WAIT_FOR_READ) { FD_SET(fd, &readfds); }
-    FD_ZERO(&writefds); if(e->flags & WAIT_FOR_WRITE) { FD_SET(fd, &writefds); }
-    FD_ZERO(&exceptfds); FD_SET(fd, &exceptfds);
-    rc = select(fd + 1, &readfds, &writefds, &exceptfds, timeout < 0 ? NULL : &t);
-    DEBUG_MSG("select returns %d", rc);
+    pollfd.fd = fd;
+    pollfd.events = POLLERR | POLLHUP | POLLNVAL;
+    pollfd.revents = 0;
+    if(e->flags & WAIT_FOR_READ) { pollfd.events |= POLLIN; }
+    if(e->flags & WAIT_FOR_WRITE) { pollfd.events |= POLLOUT; }
+    rc = poll(&pollfd, 1, ms);
+    DEBUG_MSG("poll returns %d", rc);
     if(rc == 0) {
         DEBUG_MSG("%s", "timeout");
         return timeout_mode;
     }
 
-    if(rc < 0 || FD_ISSET(fd, &exceptfds)) {
-        DEBUG_MSG("%s", "exception!!");
+    if(rc < 0) {
+        DEBUG_MSG("exception: %s", strerror(errno));
         if( errno == EINTR ) {
             PERL_ASYNC_CHECK();
             DEBUG_MSG("%s", "recieved interrupt. retry wait_for_event");
-            goto START_SELECT;
+            goto START_POLL;
         }
         return WAIT_FOR_EVENT_EXCEPTION;
     }
-    if(self->ac && FD_ISSET(fd, &readfds)) {
+    if((pollfd.revents & (POLLERR|POLLHUP|POLLNVAL)) != 0) {
+        DEBUG_MSG(
+            "exception: %s%s%s",
+            (pollfd.revents & POLLERR) ? "POLLERR " : "",
+            (pollfd.revents & POLLHUP) ? "POLLHUP " : "",
+            (pollfd.revents & POLLNVAL) ? "POLLNVAL " : "");
+        return WAIT_FOR_EVENT_EXCEPTION;
+    }
+    if(self->ac && (pollfd.revents & POLLIN) != 0) {
         DEBUG_MSG("ready to %s", "read");
         redisAsyncHandleRead(self->ac);
     }
-    if(self->ac && FD_ISSET(fd, &writefds)) {
+    if(self->ac && (pollfd.revents & POLLOUT) != 0) {
         DEBUG_MSG("ready to %s", "write");
         redisAsyncHandleWrite(self->ac);
     }
