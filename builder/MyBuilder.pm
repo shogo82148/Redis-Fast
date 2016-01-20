@@ -14,7 +14,8 @@ sub new {
         c_source             => 'src',
         xs_files             => { './src/Redis__Fast.xs' => './lib/Redis/Fast.xs', },
         include_dirs         => ['src', 'deps/hiredis'],
-        extra_linker_flags => ["deps/hiredis/libhiredis$Config{lib_ext}"],
+        extra_linker_flags   => ["deps/hiredis/libhiredis$Config{lib_ext}"],
+        $ENV{REDIS_DEBUG} ? ( extra_compiler_flags => [qw/-DDEBUG/] ) : (),
     );
 
     my $make;
@@ -32,7 +33,7 @@ sub new {
         unless (-e 'deps/hiredis/Makefile') {
             $self->do_system('git','submodule','update','--init');
         }
-    }   
+    }
     $self->do_system($make, '-C', 'deps/hiredis', 'static');
     return $self;
 }
