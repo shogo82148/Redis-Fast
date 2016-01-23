@@ -4,7 +4,7 @@
       "Ichinose Shogo <shogo82148@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v2.1.1, CPAN::Meta::Converter version 2.142060",
+   "generated_by" : "Minilla/v3.0.0, CPAN::Meta::Converter version 2.142060",
    "license" : [
       "perl_5"
    ],
@@ -30,7 +30,7 @@
       "configure" : {
          "requires" : {
             "File::Which" : "0",
-            "Module::Build" : "0.38",
+            "Module::Build" : "0.4005",
             "Module::Build::XSUtil" : "0.02"
          }
       },
@@ -54,6 +54,7 @@
          "requires" : {
             "Digest::SHA" : "0",
             "File::Temp" : "0",
+            "Parallel::ForkManager" : "0",
             "Test::Deep" : "0",
             "Test::Fatal" : "0",
             "Test::Kwalitee" : "0",
@@ -61,7 +62,8 @@
             "Test::LeakTrace" : "0",
             "Test::More" : "0.98",
             "Test::SharedFork" : "0",
-            "Test::TCP" : "0"
+            "Test::TCP" : "0",
+            "Test::UNIXSock" : "0"
          }
       }
    },
@@ -77,7 +79,7 @@
          "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
-   "version" : "0.16",
+   "version" : "0.17",
    "x_contributors" : [
       "sunnavy <sunnavy@bestpractical.com>",
       "U-LIFEBOOK\\Administrator <Administrator@LIFEBOOK.(none)>",
@@ -95,7 +97,6 @@
       "perlpong <calyx238@gmail.com>",
       "zhihong zhang <zzh_621@yahoo.com>",
       "João Bolila <joao@bolila.com>",
-      "Syohei YOSHIDA <syohex@gmail.com>",
       "Damien Krotkine <dkrotkine@weborama.com>",
       "hisaichi5518 <hisada.kazuki@gmail.com>",
       "Masayuki Matsuki <y.songmu@gmail.com>",
@@ -116,6 +117,8 @@
       "Erik Carlsson <erik.carlsson@live.com>",
       "Alex Kapranoff <alex@kapranoff.ru>",
       "nise_nabe <nise.nabe@gmail.com>",
-      "Vincent <vincent@weborama.com>"
+      "Vincent <vincent@weborama.com>",
+      "Jose Luis Perez Diez <jluis@escomposlinux.org>",
+      "Syohei YOSHIDA <syohex@gmail.com>"
    ]
 }

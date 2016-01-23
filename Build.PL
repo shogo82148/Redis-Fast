@@ -14,11 +14,11 @@ use File::Basename;
 use File::Spec;
 
 my %args = (
-    license              => 'perl',
+    license              => 'perl_5',
     dynamic_config       => 0,
 
     configure_requires => {
-        'Module::Build' => 0.38,
+        'Module::Build' => '0.4005',
     },
 
     name            => 'Redis-Fast',
@@ -50,16 +50,4 @@ my $builder = builder::MyBuilder->subclass(
     }
 )->new(%args);
 $builder->create_build_script();
-
-use File::Copy;
-
-print "cp META.json MYMETA.json\n";
-copy("META.json","MYMETA.json") or die "Copy failed(META.json): $!";
-
-if (-f 'META.yml') {
-    print "cp META.yml MYMETA.yml\n";
-    copy("META.yml","MYMETA.yml") or die "Copy failed(META.yml): $!";
-} else {
-    print "There is no META.yml... You may install this module from the repository...\n";
-}
 

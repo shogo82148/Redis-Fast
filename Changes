@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.17 2016-01-23T06:29:53Z
     - use poll(2) instead of select(2)
     - hiredis is v0.13.3 now
     - fix some compiling warnings
