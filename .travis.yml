@@ -28,7 +28,7 @@ before_install:
 install:
   - wget https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz && tar xzf $REDIS_VERSION.tar.gz && make -C redis-$REDIS_VERSION
   - cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
-  - cpanm --quiet --installdeps --notest .
+  - cpanm --quiet --with-develop --installdeps --notest .
 script:
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH redis-server --version
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH LC_ALL=$TEST_LANG minil test --all
