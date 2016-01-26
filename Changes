@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.18 2016-01-26T13:09:12Z
     - add missing dependencies (Test::UNIXSock, Parallel::ForkManager)
 
 0.17 2016-01-23T06:29:53Z

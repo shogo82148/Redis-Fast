@@ -2,7 +2,7 @@ package Redis::Fast;
 
 BEGIN {
     use XSLoader;
-    our $VERSION = '0.17';
+    our $VERSION = '0.18';
     XSLoader::load __PACKAGE__, $VERSION;
 }
 
