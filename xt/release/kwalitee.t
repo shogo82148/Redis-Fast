@@ -1,7 +1,7 @@
 BEGIN {
-    if (-e '.git') {       
+    unless ($ENV{AUTHOR_TESTING}) {
         require Test::More;
-	Test::More::plan(skip_all=>'Installing from a git repository omiting Kwalitee tests.');
+        Test::More::plan(skip_all => 'Skip because AUTHOR_TESTING is unset');
     }
 }
 
