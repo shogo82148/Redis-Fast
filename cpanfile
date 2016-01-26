@@ -17,7 +17,10 @@ on 'test' => sub {
     requires 'Test::Fatal';
     requires 'Test::SharedFork';
     requires 'Test::LeakTrace';
+    requires 'Digest::SHA';
+};
+
+on 'develop' => sub {
     requires 'Test::Kwalitee';
     requires 'Test::Kwalitee::Extra';
-    requires 'Digest::SHA';
 };

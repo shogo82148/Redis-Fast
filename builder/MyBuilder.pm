@@ -16,6 +16,19 @@ sub new {
         include_dirs         => ['src', 'deps/hiredis'],
         extra_linker_flags   => ["deps/hiredis/libhiredis$Config{lib_ext}"],
         $ENV{REDIS_DEBUG} ? ( extra_compiler_flags => [qw/-DDEBUG/] ) : (),
+
+        test_requires => {
+            "Digest::SHA"           => "0",
+            "File::Temp"            => "0",
+            "Parallel::ForkManager" => "0",
+            "Test::Deep"            => "0",
+            "Test::Fatal"           => "0",
+            "Test::LeakTrace"       => "0",
+            "Test::More"            => "0.98",
+            "Test::SharedFork"      => "0",
+            "Test::TCP"             => "0",
+            "Test::UNIXSock"        => "0",
+        },
     );
 
     my $make;

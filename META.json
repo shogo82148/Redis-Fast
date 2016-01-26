@@ -4,7 +4,7 @@
       "Ichinose Shogo <shogo82148@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v3.0.0, CPAN::Meta::Converter version 2.142060",
+   "generated_by" : "Minilla/v3.0.1, CPAN::Meta::Converter version 2.150005",
    "license" : [
       "perl_5"
    ],
@@ -37,6 +37,8 @@
       "develop" : {
          "requires" : {
             "Test::CPAN::Meta" : "0",
+            "Test::Kwalitee" : "0",
+            "Test::Kwalitee::Extra" : "0",
             "Test::MinimumVersion::Fast" : "0.04",
             "Test::PAUSE::Permissions" : "0.04",
             "Test::Pod" : "1.41",
@@ -57,8 +59,6 @@
             "Parallel::ForkManager" : "0",
             "Test::Deep" : "0",
             "Test::Fatal" : "0",
-            "Test::Kwalitee" : "0",
-            "Test::Kwalitee::Extra" : "0",
             "Test::LeakTrace" : "0",
             "Test::More" : "0.98",
             "Test::SharedFork" : "0",
@@ -120,5 +120,6 @@
       "Vincent <vincent@weborama.com>",
       "Jose Luis Perez Diez <jluis@escomposlinux.org>",
       "Syohei YOSHIDA <syohex@gmail.com>"
-   ]
+   ],
+   "x_serialization_backend" : "JSON::PP version 2.27202"
 }
