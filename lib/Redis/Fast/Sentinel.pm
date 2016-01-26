@@ -59,7 +59,7 @@ All the methods of the C<Redis::Fast> package are supported, plus the additional
 
 =head2 get_service_address
 
-Takes the name of a service as parameter, and returns either void (emptly list)
+Takes the name of a service as parameter, and returns either void (empty list)
 if the master couldn't be found, the string 'IDONTKNOW' if the service is in
 the sentinel config but cannot be reached, or the string C<"$ip:$port"> if the
 service were found.
