@@ -17,6 +17,8 @@ env:
   - REDIS_VERSION=2.8.23 TEST_LANG=ja_JP.UTF-8
 before_install:
   - if which apt-get >/dev/null; then sudo apt-get update && sudo apt-get --reinstall install -qq language-pack-en language-pack-ja; fi
+  # Root owner of $HOME/perl5 causes a perlbrew installation error.
+  - if [[ $TRAVIS_OS_NAME = osx ]] && [ -e "$HOME/perl5" ] ; then sudo chown -R $(whoami):staff $HOME/perl5; fi
   - curl -L http://install.perlbrew.pl | bash
   - source ~/perl5/perlbrew/etc/bashrc
   - git clone git://github.com/travis-perl/helpers ~/travis-perl-helpers
