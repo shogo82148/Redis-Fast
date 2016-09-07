@@ -22,6 +22,8 @@ before_install:
   - curl -L http://install.perlbrew.pl | bash
   - source ~/perl5/perlbrew/etc/bashrc
   - git clone git://github.com/travis-perl/helpers ~/travis-perl-helpers
+  # Existence of prebuilt perl causes a build-perl error.
+  - if [[ $TRAVIS_OS_NAME = osx ]]; then perlbrew list | xargs perlbrew uninstall; fi
   - source ~/travis-perl-helpers/init
   - if [[ $TRAVIS_OS_NAME = osx ]]; then export REBUILD_PERL=1; fi
   - build-perl
