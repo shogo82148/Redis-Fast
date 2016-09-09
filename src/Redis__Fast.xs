@@ -613,6 +613,11 @@ static void Redis__Fast_quit(Redis__Fast self) {
     cbt->ret.result = NULL;
     cbt->ret.error = NULL;
     cbt->custom_decode = NULL;
+
+    // initialize, or self->flags will be corrupted.
+    cbt->on_flags = 0;
+    cbt->off_flags = 0;
+
     redisAsyncCommand(
         self->ac, Redis__Fast_sync_reply_cb, cbt, "QUIT"
         );
