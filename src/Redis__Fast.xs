@@ -84,6 +84,8 @@ typedef struct redis_fast_async_cb_s {
     CUSTOM_DECODE custom_decode;
     int on_flags;
     int off_flags;
+    const void* command_name;
+    STRLEN command_length;
 } redis_fast_async_cb_t;
 
 typedef struct redis_fast_subscribe_cb_s {
@@ -712,6 +714,8 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
         cbt->collect_errors = collect_errors;
         cbt->on_flags = on_flags;
         cbt->off_flags = off_flags;
+        cbt->command_name = argv[0];
+        cbt->command_length = argvlen[0];
         redisAsyncCommandArgv(
             self->ac, Redis__Fast_async_reply_cb, cbt,
             argc, argv, argvlen
@@ -738,10 +742,22 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
             DEBUG_MSG("%s", "waiting response");
             res = _wait_all_responses(self);
             if(res == WAIT_FOR_EVENT_OK && !self->need_recoonect) {
-                ret = cbt->ret;
-                if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
-                DEBUG_MSG("finish %s", argv[0]);
-                return ret;
+                int _need_recoonect = 0;
+                if (1 < cnt - i) {
+                    _need_recoonect = Redis__Fast_call_reconnect_on_error(
+                        self, cbt->ret, argv[0], argvlen[0]
+                    );
+                    // Should be quit before reconnect
+                    if (_need_recoonect) {
+                        Redis__Fast_quit(self);
+                    }
+                }
+                if (!_need_recoonect) {
+                    ret = cbt->ret;
+                    if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
+                    DEBUG_MSG("finish %s", argv[0]);
+                    return ret;
+                }
             }
 
             if( res == WAIT_FOR_EVENT_READ_TIMEOUT ) break;
