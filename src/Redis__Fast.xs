@@ -602,6 +602,31 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
     DEBUG_MSG("%s", "finish");
 }
 
+static void Redis__Fast_quit(Redis__Fast self) {
+    if(!self->ac) {
+        return;
+    }
+
+    redis_fast_sync_cb_t *cbt;
+
+    Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
+    cbt->ret.result = NULL;
+    cbt->ret.error = NULL;
+    cbt->custom_decode = NULL;
+    redisAsyncCommand(
+        self->ac, Redis__Fast_sync_reply_cb, cbt, "QUIT"
+        );
+    redisAsyncDisconnect(self->ac);
+    if(_wait_all_responses(self) == WAIT_FOR_EVENT_OK) {
+        DEBUG_MSG("%s", "wait_all_responses ok");
+        if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
+    } else {
+        DEBUG_MSG("%s", "wait_all_responses not ok");
+        if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
+    }
+    DEBUG_MSG("%s", "finish");
+    self->ac = NULL;
+}
 
 static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECODE custom_decode, SV* cb, int argc, const char** argv, size_t* argvlen) {
     redis_fast_reply_t ret = {NULL, NULL};
@@ -1116,29 +1141,11 @@ CODE:
 
 void
 __quit(Redis::Fast self)
-PREINIT:
-    redis_fast_sync_cb_t *cbt;
 CODE:
 {
     DEBUG_MSG("%s", "start QUIT");
     if(self->ac) {
-        Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
-        cbt->ret.result = NULL;
-        cbt->ret.error = NULL;
-        cbt->custom_decode = NULL;
-        redisAsyncCommand(
-            self->ac, Redis__Fast_sync_reply_cb, cbt, "QUIT"
-            );
-        redisAsyncDisconnect(self->ac);
-        if(_wait_all_responses(self) == WAIT_FOR_EVENT_OK) {
-            DEBUG_MSG("%s", "wait_all_responses ok");
-            if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
-        } else {
-            DEBUG_MSG("%s", "wait_all_responses not ok");
-            if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
-        }
-        DEBUG_MSG("%s", "finish");
-        self->ac = NULL;
+        Redis__Fast_quit(self);
         ST(0) = sv_2mortal(newSViv(1));
         XSRETURN(1);
     } else {
