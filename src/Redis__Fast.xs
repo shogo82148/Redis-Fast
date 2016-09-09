@@ -54,6 +54,8 @@ typedef struct redis_fast_s {
     SV* on_connect;
     SV* on_build_sock;
     SV* data;
+    SV* reconnect_on_error;
+    double next_reconnect_on_error_at;
     int proccess_sub_count;
     int is_subscriber;
     int expected_subs;
@@ -471,6 +473,52 @@ static redis_fast_reply_t Redis__Fast_decode_reply(Redis__Fast self, redisReply*
     return res;
 }
 
+static int Redis__Fast_call_reconnect_on_error(Redis__Fast self, redis_fast_reply_t ret, const void *command_name, STRLEN command_length) {
+    int _need_recoonect = 0;
+
+    if (ret.error == NULL) {
+        return _need_recoonect;
+    }
+    if (self->reconnect_on_error == NULL) {
+        return _need_recoonect;
+    }
+
+    struct timeval current;
+    gettimeofday(&current, NULL);
+    double current_sec = current.tv_sec + 1E-6 * current.tv_usec;
+    if( self->next_reconnect_on_error_at < 0 ||
+            self->next_reconnect_on_error_at < current_sec) {
+        SV* sv_ret = ret.result ? ret.result : sv_2mortal(newSV(0));
+        SV* sv_err = ret.error;
+        SV* sv_cmd = sv_2mortal(newSVpvn(command_name, command_length));
+
+        dSP;
+        ENTER;
+        SAVETMPS;
+
+        PUSHMARK(SP);
+        XPUSHs(sv_err);
+        XPUSHs(sv_ret);
+        XPUSHs(sv_cmd);
+        PUTBACK;
+
+        int count = call_sv(self->reconnect_on_error, G_SCALAR);
+
+        SPAGAIN;
+
+        if (count != 1) {
+            croak("[BUG] retval count should be 1\n");
+        }
+        _need_recoonect = POPi;
+
+        PUTBACK;
+        FREETMPS;
+        LEAVE;
+    }
+
+    return _need_recoonect;
+}
+
 static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_sync_cb_t *cbt = (redis_fast_sync_cb_t*)privdata;
@@ -784,6 +832,8 @@ CODE:
     DEBUG_MSG("%s", "start");
     Newxz(self, sizeof(redis_fast_t), redis_fast_t);
     self->error = (char*)malloc(MAX_ERROR_SIZE);
+    self->reconnect_on_error = NULL;
+    self->next_reconnect_on_error_at = -1;
     ST(0) = sv_newmortal();
     sv_setref_pv(ST(0), cls, (void*)self);
     DEBUG_MSG("return %p", ST(0));
@@ -963,6 +1013,29 @@ CODE:
 }
 
 void
+__set_reconnect_on_error(Redis::Fast self, SV* func)
+CODE:
+{
+    self->reconnect_on_error = SvREFCNT_inc(func);
+}
+
+double
+__set_next_reconnect_on_error_at(Redis::Fast self, double val)
+CODE:
+{
+    if ( -1 < val ) {
+        struct timeval current;
+        gettimeofday(&current, NULL);
+        double current_sec = current.tv_sec + 1E-6 * current.tv_usec;
+        val += current_sec;
+    }
+
+    RETVAL = self->next_reconnect_on_error_at = val;
+}
+OUTPUT:
+    RETVAL
+
+void
 is_subscriber(Redis::Fast self)
 CODE:
 {
@@ -1016,6 +1089,12 @@ CODE:
         DEBUG_MSG("%s", "free data");
         SvREFCNT_dec(self->data);
         self->data = NULL;
+    }
+
+    if(self->reconnect_on_error) {
+        DEBUG_MSG("%s", "free reconnect_on_error");
+        SvREFCNT_dec(self->reconnect_on_error);
+        self->reconnect_on_error = NULL;
     }
 
     Safefree(self);
