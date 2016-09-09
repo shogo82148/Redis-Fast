@@ -92,6 +92,42 @@ It is compatible with [Redis.pm](https://github.com/melo/perl-redis).
 This version supports protocol 2.x (multi-bulk) or later of Redis available at
 [https://github.com/antirez/redis/](https://github.com/antirez/redis/).
 
+## Reconnect on error
+
+Besides auto-reconnect when the connection is closed, `Redis::Fast` supports
+reconnecting on the specified errors by the `reconnect_on_error` option.
+Here's an example that will reconnect when receiving `READONLY` error:
+
+    my $r = Redis::Fast->new(
+      reconnect          => 1, # The value greater than 0 is required
+      reconnect_on_error => sub {
+        my ($error, $ret, $command) = @_;
+        if ($error =~ /READONLY You can't write against a read only slave/) {
+          # force reconnect
+          return 1;
+        }
+        # do nothing
+        return -1;
+      },
+    );
+
+This feature is useful when using Amazon ElastiCache.
+Once failover happens, Amazon ElastiCache will switch the master
+we currently connected with to a slave,
+leading to the following writes fails with the error `READONLY`.
+Using `reconnect_on_error`, we can force the connection to reconnect on this error
+in order to connect to the new master.
+If your Elasticache Redis is enabled to be set an option for [close-on-slave-write](https://docs.aws.amazon.com/AmazonElastiCache/latest/UserGuide/ParameterGroups.Redis.html#ParameterGroups.Redis.2-8-23),
+this feature might be unnecessary.
+
+The return value of `reconnect_on_error` should be greater than `-2`. `-1` means that
+`Redis::Fast` behaves the same as without this option. `0` and greater than `0`
+means that `Redis::Fast` forces to reconnect and then
+wait for a next force reconnect until this value seconds elapse.
+This unit is a second, and the type is double. For example, 0.01 means 10 milliseconds.
+
+Note: This feature is not supported for the subscribed mode.
+
 # PERFORMANCE IN SYNCHRONIZE MODE
 
 ## Redis.pm
@@ -133,7 +169,7 @@ Redis::Fast is 50% faster than Redis.pm.
     use strict;
     use Time::HiRes qw/time/;
     use Redis;
-    
+
     my $count = 100000;
     {
         my $r = Redis->new;
@@ -144,7 +180,7 @@ Redis::Fast is 50% faster than Redis.pm.
         $r->wait_all_responses;
         printf "Redis.pm:\n%.2f/s\n", $count / (time - $start);
     }
-    
+
     {
         my $r = Redis::Fast->new;
         my $start = time;

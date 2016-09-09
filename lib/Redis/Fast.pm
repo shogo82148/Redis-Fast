@@ -88,6 +88,36 @@ sub _new_on_connect_cb {
     };
 }
 
+sub _new_reconnect_on_error_cb {
+    my ($self, $reconnect_on_error) = @_;
+    weaken $self;
+
+    if ($reconnect_on_error) {
+        return sub {
+            # The unit should be second and the type should be double.
+            # -1 is a special value, it means that we do not reconnect.
+            my $next_reconnect_interval = $reconnect_on_error->(@_);
+            if ($next_reconnect_interval < -1) {
+                warn "reconnect_on_error must not return a number less than -1";
+
+                # Reset a next_reconnect_interval and do not reconnect.
+                $next_reconnect_interval = -1;
+            }
+
+            # Wait until next_reconnect_interval seconds elapse.
+            $self->__set_next_reconnect_on_error_at($next_reconnect_interval);
+
+            my $need_reconnect = 0;
+            if (-1 < $next_reconnect_interval) {
+                $need_reconnect = 1;
+            }
+            return $need_reconnect;
+        };
+    } else {
+        return;
+    }
+}
+
 sub new {
   my $class = shift;
   my %args  = @_;
@@ -170,7 +200,7 @@ sub new {
                       ( sort { $h{$a} <=> $h{$b} } keys %h ), # sorted existing sentinels,
                       grep { ! $h{$_}; }                      # list of unknown
                       map { +{ @$_ }->{name}; }               # names of
-                      $sentinel->sentinel(                    # sentinels 
+                      $sentinel->sentinel(                    # sentinels
                         sentinels => $data->{service}         # for this service
                       )
                   ];
@@ -190,6 +220,10 @@ sub new {
   $self->__set_cnx_timeout($args{cnx_timeout} || -1);
   $self->__set_read_timeout($args{read_timeout} || -1);
   $self->__set_write_timeout($args{write_timeout} || -1);
+
+  if (my $cb = $self->_new_reconnect_on_error_cb($args{reconnect_on_error})) {
+      $self->__set_reconnect_on_error($cb);
+  }
 
   $self->connect unless $args{no_auto_connect_on_new};
 
@@ -508,6 +542,41 @@ It is compatible with L<Redis.pm|https://github.com/melo/perl-redis>.
 This version supports protocol 2.x (multi-bulk) or later of Redis available at
 L<https://github.com/antirez/redis/>.
 
+=head2 Reconnect on error
+
+Besides auto-reconnect when the connection is closed, C<Redis::Fast> supports
+reconnecting on the specified errors by the C<reconnect_on_error> option.
+Here's an example that will reconnect when receiving C<READONLY> error:
+
+    my $r = Redis::Fast->new(
+      reconnect          => 1, # The value greater than 0 is required
+      reconnect_on_error => sub {
+        my ($error, $ret, $command) = @_;
+        if ($error =~ /READONLY You can't write against a read only slave/) {
+          # force reconnect
+          return 1;
+        }
+        # do nothing
+        return -1;
+      },
+    );
+
+This feature is useful when using Amazon ElastiCache.
+Once failover happens, Amazon ElastiCache will switch the master
+we currently connected with to a slave,
+leading to the following writes fails with the error C<READONLY>.
+Using C<reconnect_on_error>, we can force the connection to reconnect on this error
+in order to connect to the new master.
+If your Elasticache Redis is enabled to be set an option for L<close-on-slave-write|https://docs.aws.amazon.com/AmazonElastiCache/latest/UserGuide/ParameterGroups.Redis.html#ParameterGroups.Redis.2-8-23>,
+this feature might be unnecessary.
+
+The return value of C<reconnect_on_error> should be greater than C<-2>. C<-1> means that
+C<Redis::Fast> behaves the same as without this option. C<0> and greater than C<0>
+means that C<Redis::Fast> forces to reconnect and then
+wait for a next force reconnect until this value seconds elapse.
+This unit is a second, and the type is double. For example, 0.01 means 10 milliseconds.
+
+Note: This feature is not supported for the subscribed mode.
 
 =head1 PERFORMANCE IN SYNCHRONIZE MODE
 
@@ -551,7 +620,7 @@ Redis::Fast is 50% faster than Redis.pm.
     use strict;
     use Time::HiRes qw/time/;
     use Redis;
-    
+
     my $count = 100000;
     {
         my $r = Redis->new;
@@ -562,7 +631,7 @@ Redis::Fast is 50% faster than Redis.pm.
         $r->wait_all_responses;
         printf "Redis.pm:\n%.2f/s\n", $count / (time - $start);
     }
-    
+
     {
         my $r = Redis::Fast->new;
         my $start = time;
