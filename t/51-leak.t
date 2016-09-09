@@ -58,4 +58,31 @@ no_leaks_ok {
     $r->unsubscribe('hogehoge', $cb);
 } 'unsubscribe';
 
+no_leaks_ok {
+    my $r = Redis::Fast->new(
+        server => $srv,
+        reconnect => 1,
+        reconnect_on_error => sub {
+            my $force_reconnect = 1;
+            return $force_reconnect;
+        },
+    );
+    eval { $r->hset(1,1) };
+} 'sync reconnect_on_error';
+
+no_leaks_ok {
+    my $r = Redis::Fast->new(
+        server => $srv,
+        reconnect => 1,
+        reconnect_on_error => sub {
+            my $force_reconnect = 1;
+            return $force_reconnect;
+        },
+    );
+    my $cb = sub {};
+    $r->hset(1,1,$cb);
+    $r->hset(2,2,$cb);
+    eval { $r->wait_all_responses };
+} 'async reconnect_on_error';
+
 done_testing;
