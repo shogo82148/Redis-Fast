@@ -547,12 +547,13 @@ static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* p
 static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_async_cb_t *cbt = (redis_fast_async_cb_t*)privdata;
-    redis_fast_reply_t result;
-    SV* sv_undef;
     if (reply) {
         self->flags = (self->flags | cbt->on_flags) & cbt->off_flags;
 
         {
+            redis_fast_reply_t result;
+            SV* sv_undef;
+
             dSP;
 
             ENTER;
@@ -577,6 +578,26 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
 
             FREETMPS;
             LEAVE;
+        }
+
+        {
+            if (0 < self->reconnect && !self->need_recoonect
+                // Avoid useless cost when reconnect_on_error is not set.
+                && self->reconnect_on_error != NULL) {
+                redis_fast_reply_t result;
+                if(cbt->custom_decode) {
+                    result = (cbt->custom_decode)(
+                        self, (redisReply*)reply, cbt->collect_errors
+                    );
+                } else {
+                    result = Redis__Fast_decode_reply(
+                        self, (redisReply*)reply, cbt->collect_errors
+                    );
+                }
+                self->need_recoonect = Redis__Fast_call_reconnect_on_error(
+                    self, result, cbt->command_name, cbt->command_length
+                );
+            }
         }
     }
 
@@ -1176,8 +1197,14 @@ CODE:
     if(res != WAIT_FOR_EVENT_OK) {
         croak("Error while reading from Redis server");
     }
-}
 
+    if (0 < self->reconnect && self->need_recoonect) {
+        // Should be quit before reconnect
+        Redis__Fast_quit(self);
+        Redis__Fast_reconnect(self);
+        self->need_recoonect = 0;
+    }
+}
 
 void
 wait_one_response(Redis::Fast self)
@@ -1187,8 +1214,14 @@ CODE:
     if(res != WAIT_FOR_EVENT_OK) {
         croak("Error while reading from Redis server");
     }
-}
 
+    if (0 < self->reconnect && self->need_recoonect) {
+        // Should be quit before reconnect
+        Redis__Fast_quit(self);
+        Redis__Fast_reconnect(self);
+        self->need_recoonect = 0;
+    }
+}
 
 void
 __std_cmd(Redis::Fast self, ...)
