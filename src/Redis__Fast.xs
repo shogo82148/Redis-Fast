@@ -477,6 +477,12 @@ static redis_fast_reply_t Redis__Fast_decode_reply(Redis__Fast self, redisReply*
 
 static int Redis__Fast_call_reconnect_on_error(Redis__Fast self, redis_fast_reply_t ret, const void *command_name, STRLEN command_length) {
     int _need_recoonect = 0;
+    struct timeval current;
+    double current_sec;
+    SV* sv_ret;
+    SV* sv_err;
+    SV* sv_cmd;
+    int count;
 
     if (ret.error == NULL) {
         return _need_recoonect;
@@ -485,18 +491,17 @@ static int Redis__Fast_call_reconnect_on_error(Redis__Fast self, redis_fast_repl
         return _need_recoonect;
     }
 
-    struct timeval current;
     gettimeofday(&current, NULL);
-    double current_sec = current.tv_sec + 1E-6 * current.tv_usec;
+    current_sec = current.tv_sec + 1E-6 * current.tv_usec;
     if( self->next_reconnect_on_error_at < 0 ||
             self->next_reconnect_on_error_at < current_sec) {
-        SV* sv_ret = ret.result ? ret.result : sv_2mortal(newSV(0));
-        SV* sv_err = ret.error;
-        SV* sv_cmd = sv_2mortal(newSVpvn(command_name, command_length));
-
         dSP;
         ENTER;
         SAVETMPS;
+
+        sv_ret = ret.result ? ret.result : sv_2mortal(newSV(0));
+        sv_err = ret.error;
+        sv_cmd = sv_2mortal(newSVpvn(command_name, command_length));
 
         PUSHMARK(SP);
         XPUSHs(sv_err);
@@ -504,7 +509,7 @@ static int Redis__Fast_call_reconnect_on_error(Redis__Fast self, redis_fast_repl
         XPUSHs(sv_cmd);
         PUTBACK;
 
-        int count = call_sv(self->reconnect_on_error, G_SCALAR);
+        count = call_sv(self->reconnect_on_error, G_SCALAR);
 
         SPAGAIN;
 
@@ -674,11 +679,11 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
 }
 
 static void Redis__Fast_quit(Redis__Fast self) {
+    redis_fast_sync_cb_t *cbt;
+
     if(!self->ac) {
         return;
     }
-
-    redis_fast_sync_cb_t *cbt;
 
     Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
     cbt->ret.result = NULL;
@@ -1060,10 +1065,12 @@ double
 __set_next_reconnect_on_error_at(Redis::Fast self, double val)
 CODE:
 {
+    struct timeval current;
+    double current_sec;
+
     if ( -1 < val ) {
-        struct timeval current;
         gettimeofday(&current, NULL);
-        double current_sec = current.tv_sec + 1E-6 * current.tv_usec;
+        current_sec = current.tv_sec + 1E-6 * current.tv_usec;
         val += current_sec;
     }
 
