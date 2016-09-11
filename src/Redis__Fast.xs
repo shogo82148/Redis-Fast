@@ -501,7 +501,7 @@ static int Redis__Fast_call_reconnect_on_error(Redis__Fast self, redis_fast_repl
 
         sv_ret = ret.result ? ret.result : sv_2mortal(newSV(0));
         sv_err = ret.error;
-        sv_cmd = sv_2mortal(newSVpvn(command_name, command_length));
+        sv_cmd = sv_2mortal(newSVpvn((const char*)command_name, command_length));
 
         PUSHMARK(SP);
         XPUSHs(sv_err);
