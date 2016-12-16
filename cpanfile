@@ -1,6 +1,7 @@
 requires 'perl', '5.008001';
 requires 'Try::Tiny';
 requires 'Time::HiRes';
+requires 'Tie::StdHash';
 
 on 'configure' => sub{
     requires 'Module::Build::XSUtil' => '>=0.02';
