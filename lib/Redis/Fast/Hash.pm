@@ -6,8 +6,9 @@ package Redis::Fast::Hash;
 
 use strict;
 use warnings;
-use Tie::Hash;
-use base qw/Redis::Fast Tie::StdHash/;
+require Tie::Hash;
+require Redis::Fast;
+our @ISA = qw(Redis::Fast Tie::StdHash);
 
 
 sub TIEHASH {
