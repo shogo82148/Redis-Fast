@@ -15,9 +15,7 @@ env:
   - REDIS_VERSION=4.0-rc2 TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=3.2.6 TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=2.8.24 TEST_LANG=en_US.UTF-8
-  - REDIS_VERSION=4.0-rc2 TEST_LANG=ja_JP.UTF-8
   - REDIS_VERSION=3.2.6 TEST_LANG=ja_JP.UTF-8
-  - REDIS_VERSION=2.8.24 TEST_LANG=ja_JP.UTF-8
 before_install:
   - if which apt-get >/dev/null; then sudo apt-get update && sudo apt-get --reinstall install -qq language-pack-en language-pack-ja; fi
   # Root owner of $HOME/perl5 causes a perlbrew installation error.
