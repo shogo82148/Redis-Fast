@@ -54,6 +54,8 @@ typedef struct redis_fast_s {
     SV* on_connect;
     SV* on_build_sock;
     SV* data;
+    SV* reconnect_on_error;
+    double next_reconnect_on_error_at;
     int proccess_sub_count;
     int is_subscriber;
     int expected_subs;
@@ -82,6 +84,8 @@ typedef struct redis_fast_async_cb_s {
     CUSTOM_DECODE custom_decode;
     int on_flags;
     int off_flags;
+    const void* command_name;
+    STRLEN command_length;
 } redis_fast_async_cb_t;
 
 typedef struct redis_fast_subscribe_cb_s {
@@ -471,6 +475,57 @@ static redis_fast_reply_t Redis__Fast_decode_reply(Redis__Fast self, redisReply*
     return res;
 }
 
+static int Redis__Fast_call_reconnect_on_error(Redis__Fast self, redis_fast_reply_t ret, const void *command_name, STRLEN command_length) {
+    int _need_recoonect = 0;
+    struct timeval current;
+    double current_sec;
+    SV* sv_ret;
+    SV* sv_err;
+    SV* sv_cmd;
+    int count;
+
+    if (ret.error == NULL) {
+        return _need_recoonect;
+    }
+    if (self->reconnect_on_error == NULL) {
+        return _need_recoonect;
+    }
+
+    gettimeofday(&current, NULL);
+    current_sec = current.tv_sec + 1E-6 * current.tv_usec;
+    if( self->next_reconnect_on_error_at < 0 ||
+            self->next_reconnect_on_error_at < current_sec) {
+        dSP;
+        ENTER;
+        SAVETMPS;
+
+        sv_ret = ret.result ? ret.result : sv_2mortal(newSV(0));
+        sv_err = ret.error;
+        sv_cmd = sv_2mortal(newSVpvn((const char*)command_name, command_length));
+
+        PUSHMARK(SP);
+        XPUSHs(sv_err);
+        XPUSHs(sv_ret);
+        XPUSHs(sv_cmd);
+        PUTBACK;
+
+        count = call_sv(self->reconnect_on_error, G_SCALAR);
+
+        SPAGAIN;
+
+        if (count != 1) {
+            croak("[BUG] retval count should be 1\n");
+        }
+        _need_recoonect = POPi;
+
+        PUTBACK;
+        FREETMPS;
+        LEAVE;
+    }
+
+    return _need_recoonect;
+}
+
 static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_sync_cb_t *cbt = (redis_fast_sync_cb_t*)privdata;
@@ -497,12 +552,13 @@ static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* p
 static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_async_cb_t *cbt = (redis_fast_async_cb_t*)privdata;
-    redis_fast_reply_t result;
-    SV* sv_undef;
     if (reply) {
         self->flags = (self->flags | cbt->on_flags) & cbt->off_flags;
 
         {
+            redis_fast_reply_t result;
+            SV* sv_undef;
+
             dSP;
 
             ENTER;
@@ -527,6 +583,26 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
 
             FREETMPS;
             LEAVE;
+        }
+
+        {
+            if (0 < self->reconnect && !self->need_recoonect
+                // Avoid useless cost when reconnect_on_error is not set.
+                && self->reconnect_on_error != NULL) {
+                redis_fast_reply_t result;
+                if(cbt->custom_decode) {
+                    result = (cbt->custom_decode)(
+                        self, (redisReply*)reply, cbt->collect_errors
+                    );
+                } else {
+                    result = Redis__Fast_decode_reply(
+                        self, (redisReply*)reply, cbt->collect_errors
+                    );
+                }
+                self->need_recoonect = Redis__Fast_call_reconnect_on_error(
+                    self, result, cbt->command_name, cbt->command_length
+                );
+            }
         }
     }
 
@@ -602,6 +678,36 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
     DEBUG_MSG("%s", "finish");
 }
 
+static void Redis__Fast_quit(Redis__Fast self) {
+    redis_fast_sync_cb_t *cbt;
+
+    if(!self->ac) {
+        return;
+    }
+
+    Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
+    cbt->ret.result = NULL;
+    cbt->ret.error = NULL;
+    cbt->custom_decode = NULL;
+
+    // initialize, or self->flags will be corrupted.
+    cbt->on_flags = 0;
+    cbt->off_flags = 0;
+
+    redisAsyncCommand(
+        self->ac, Redis__Fast_sync_reply_cb, cbt, "QUIT"
+        );
+    redisAsyncDisconnect(self->ac);
+    if(_wait_all_responses(self) == WAIT_FOR_EVENT_OK) {
+        DEBUG_MSG("%s", "wait_all_responses ok");
+        if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
+    } else {
+        DEBUG_MSG("%s", "wait_all_responses not ok");
+        if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
+    }
+    DEBUG_MSG("%s", "finish");
+    self->ac = NULL;
+}
 
 static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECODE custom_decode, SV* cb, int argc, const char** argv, size_t* argvlen) {
     redis_fast_reply_t ret = {NULL, NULL};
@@ -634,6 +740,8 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
         cbt->collect_errors = collect_errors;
         cbt->on_flags = on_flags;
         cbt->off_flags = off_flags;
+        cbt->command_name = argv[0];
+        cbt->command_length = argvlen[0];
         redisAsyncCommandArgv(
             self->ac, Redis__Fast_async_reply_cb, cbt,
             argc, argv, argvlen
@@ -660,10 +768,22 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
             DEBUG_MSG("%s", "waiting response");
             res = _wait_all_responses(self);
             if(res == WAIT_FOR_EVENT_OK && !self->need_recoonect) {
-                ret = cbt->ret;
-                if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
-                DEBUG_MSG("finish %s", argv[0]);
-                return ret;
+                int _need_recoonect = 0;
+                if (1 < cnt - i) {
+                    _need_recoonect = Redis__Fast_call_reconnect_on_error(
+                        self, cbt->ret, argv[0], argvlen[0]
+                    );
+                    // Should be quit before reconnect
+                    if (_need_recoonect) {
+                        Redis__Fast_quit(self);
+                    }
+                }
+                if (!_need_recoonect) {
+                    ret = cbt->ret;
+                    if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
+                    DEBUG_MSG("finish %s", argv[0]);
+                    return ret;
+                }
             }
 
             if( res == WAIT_FOR_EVENT_READ_TIMEOUT ) break;
@@ -754,6 +874,8 @@ CODE:
     DEBUG_MSG("%s", "start");
     Newxz(self, sizeof(redis_fast_t), redis_fast_t);
     self->error = (char*)malloc(MAX_ERROR_SIZE);
+    self->reconnect_on_error = NULL;
+    self->next_reconnect_on_error_at = -1;
     ST(0) = sv_newmortal();
     sv_setref_pv(ST(0), cls, (void*)self);
     DEBUG_MSG("return %p", ST(0));
@@ -933,6 +1055,31 @@ CODE:
 }
 
 void
+__set_reconnect_on_error(Redis::Fast self, SV* func)
+CODE:
+{
+    self->reconnect_on_error = SvREFCNT_inc(func);
+}
+
+double
+__set_next_reconnect_on_error_at(Redis::Fast self, double val)
+CODE:
+{
+    struct timeval current;
+    double current_sec;
+
+    if ( -1 < val ) {
+        gettimeofday(&current, NULL);
+        current_sec = current.tv_sec + 1E-6 * current.tv_usec;
+        val += current_sec;
+    }
+
+    RETVAL = self->next_reconnect_on_error_at = val;
+}
+OUTPUT:
+    RETVAL
+
+void
 is_subscriber(Redis::Fast self)
 CODE:
 {
@@ -986,6 +1133,12 @@ CODE:
         DEBUG_MSG("%s", "free data");
         SvREFCNT_dec(self->data);
         self->data = NULL;
+    }
+
+    if(self->reconnect_on_error) {
+        DEBUG_MSG("%s", "free reconnect_on_error");
+        SvREFCNT_dec(self->reconnect_on_error);
+        self->reconnect_on_error = NULL;
     }
 
     Safefree(self);
@@ -1051,8 +1204,14 @@ CODE:
     if(res != WAIT_FOR_EVENT_OK) {
         croak("Error while reading from Redis server");
     }
-}
 
+    if (0 < self->reconnect && self->need_recoonect) {
+        // Should be quit before reconnect
+        Redis__Fast_quit(self);
+        Redis__Fast_reconnect(self);
+        self->need_recoonect = 0;
+    }
+}
 
 void
 wait_one_response(Redis::Fast self)
@@ -1062,8 +1221,14 @@ CODE:
     if(res != WAIT_FOR_EVENT_OK) {
         croak("Error while reading from Redis server");
     }
-}
 
+    if (0 < self->reconnect && self->need_recoonect) {
+        // Should be quit before reconnect
+        Redis__Fast_quit(self);
+        Redis__Fast_reconnect(self);
+        self->need_recoonect = 0;
+    }
+}
 
 void
 __std_cmd(Redis::Fast self, ...)
@@ -1116,29 +1281,11 @@ CODE:
 
 void
 __quit(Redis::Fast self)
-PREINIT:
-    redis_fast_sync_cb_t *cbt;
 CODE:
 {
     DEBUG_MSG("%s", "start QUIT");
     if(self->ac) {
-        Newx(cbt, sizeof(redis_fast_sync_cb_t), redis_fast_sync_cb_t);
-        cbt->ret.result = NULL;
-        cbt->ret.error = NULL;
-        cbt->custom_decode = NULL;
-        redisAsyncCommand(
-            self->ac, Redis__Fast_sync_reply_cb, cbt, "QUIT"
-            );
-        redisAsyncDisconnect(self->ac);
-        if(_wait_all_responses(self) == WAIT_FOR_EVENT_OK) {
-            DEBUG_MSG("%s", "wait_all_responses ok");
-            if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
-        } else {
-            DEBUG_MSG("%s", "wait_all_responses not ok");
-            if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
-        }
-        DEBUG_MSG("%s", "finish");
-        self->ac = NULL;
+        Redis__Fast_quit(self);
         ST(0) = sv_2mortal(newSViv(1));
         XSRETURN(1);
     } else {
