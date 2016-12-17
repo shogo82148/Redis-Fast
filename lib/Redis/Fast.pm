@@ -16,6 +16,21 @@ use Scalar::Util qw(weaken);
 
 use Redis::Fast::Sentinel;
 
+
+# small utilities for handling host and port
+sub _join_host_port {
+    my ($host, $port) = @_;
+    return "[$host]:$port" if $host =~ /:/ || $host =~ /%/;
+    return "$host:$port";
+}
+sub _split_host_port {
+    my $hostport = shift;
+    if ($hostport =~ /\A\[([^\]]+)\]:([0-9]+)\z/) {
+        return $1, $2;
+    }
+    return split /:/, $hostport;
+}
+
 sub _new_on_connect_cb {
     my ($self, $on_conn, $password, $name) = @_;
     weaken $self;
@@ -186,7 +201,7 @@ sub new {
                     next;
 
               # we found the service, set the server
-              my ($server, $port) = split /:/, $server_address;
+              my ($server, $port) = _split_host_port $server_address;
               $self->__connection_info($server, $port);
 
               if (! $data->{no_sentinels_list_update} ) {
@@ -196,10 +211,14 @@ sub new {
                   my %h = ( ( map { $_ => $idx++ } @{$data->{sentinels}}),
                             $sentinel_address => 1,
                           );
+
                   $data->{sentinels} = [
                       ( sort { $h{$a} <=> $h{$b} } keys %h ), # sorted existing sentinels,
                       grep { ! $h{$_}; }                      # list of unknown
-                      map { +{ @$_ }->{name}; }               # names of
+                      map {
+                          my $s = +{ @$_ };
+                          _join_host_port($s->{ip}, $s->{port});
+                      }                                       # ip:port of
                       $sentinel->sentinel(                    # sentinels
                         sentinels => $data->{service}         # for this service
                       )
@@ -209,7 +228,7 @@ sub new {
       };
       $self->__set_on_build_sock($on_build_sock);
   } else {
-      my ($server, $port) = split /:/, ($args{server} || '127.0.0.1:6379');
+      my ($server, $port) = _split_host_port($args{server} || '127.0.0.1:6379');
       $self->__connection_info($server, $port);
   }
 
