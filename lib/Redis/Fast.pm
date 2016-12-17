@@ -18,9 +18,18 @@ use Redis::Fast::Sentinel;
 
 
 # small utilities for handling host and port
-# TODO: ipv6 support
-sub _join_host_port { "$_[0]:$_[1]" }
-sub _split_host_port { split /:/, $_[0] }
+sub _join_host_port {
+    my ($host, $port) = @_;
+    return "[$host]:$port" if $host =~ /:/ || $host =~ /%/;
+    return "$host:$port";
+}
+sub _split_host_port {
+    my $hostport = shift;
+    if ($hostport =~ /\A\[([^\]]+)\]:([0-9]+)\z/) {
+        return $1, $2;
+    }
+    return split /:/, $hostport;
+}
 
 sub _new_on_connect_cb {
     my ($self, $on_conn, $password, $name) = @_;
