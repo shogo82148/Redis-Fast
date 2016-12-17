@@ -20,7 +20,7 @@ branches:
   only:
   - master
 install:
-  - ./.travis_install.sh
+  - ./.travis-install.sh
 cache:
   directories:
     - $HOME/travis-perl-helpers
