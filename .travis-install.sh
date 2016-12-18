@@ -9,12 +9,12 @@ if which apt-get >/dev/null; then
 fi
 
 # reinstall perl because some modules are too old.
-if [ ! -e "$HOME/travis-perl-helpers/.git" ]; then
-    # Root owner of $HOME/perl5 causes a perlbrew installation error.
-    if [[ $TRAVIS_OS_NAME = osx ]] && [ -e "$HOME/perl5" ] ; then sudo chown -R "$(whoami):staff" "$HOME/perl5"; fi
 
-    curl -L http://install.perlbrew.pl | bash
-    source ~/perl5/perlbrew/etc/bashrc
+# Root owner of $HOME/perl5 causes a perlbrew installation error.
+if [[ $TRAVIS_OS_NAME = osx ]] && [ -e "$HOME/perl5" ] ; then sudo chown -R "$(whoami):staff" "$HOME/perl5"; fi
+if [ ! -e "$HOME/perl5/perlbrew/etc/bashrc"]; then curl -L http://install.perlbrew.pl | bash; fi
+source ~/perl5/perlbrew/etc/bashrc
+if [ ! -e "$HOME/travis-perl-helpers/init" ]; then
     git clone git://github.com/travis-perl/helpers ~/travis-perl-helpers
 
     # Existence of prebuilt perl causes a build-perl error.
@@ -26,7 +26,6 @@ if [ ! -e "$HOME/travis-perl-helpers/.git" ]; then
     build-perl
     cpan-install App::cpanminus
 else
-    source ~/perl5/perlbrew/etc/bashrc
     source ~/travis-perl-helpers/init
 fi
 
