@@ -31,10 +31,12 @@ fi
 
 
 # install redis.
-if [ ! -e "redis-$REDIS_VERSION/src/redis-server" ]; then
+if [ ! -e "redis-bin/redis-server" ]; then
     wget "https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz"
     tar xzf "$REDIS_VERSION.tar.gz"
     make -C "redis-$REDIS_VERSION"
+    mkdir -p redis-bin
+    cp "redis-REDIS_VERSION/src/redis-server" redis-bin/redis-server
 fi
 
 # install CPAN modules.
