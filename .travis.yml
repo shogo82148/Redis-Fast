@@ -28,6 +28,7 @@ cache:
     - redis-$REDIS_VERSION
 script:
   - source ~/perl5/perlbrew/etc/bashrc
+  - source ~/travis-perl-helpers/init
   - perl -V
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH redis-server --version
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH LC_ALL=$TEST_LANG minil test --all

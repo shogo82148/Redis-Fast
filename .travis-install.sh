@@ -25,6 +25,9 @@ if [ ! -e "$HOME/travis-perl-helpers/.git" ]; then
 
     build-perl
     cpan-install App::cpanminus
+else
+    source ~/perl5/perlbrew/etc/bashrc
+    source ~/travis-perl-helpers/init
 fi
 
 
