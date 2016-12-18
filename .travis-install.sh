@@ -12,7 +12,7 @@ fi
 
 # Root owner of $HOME/perl5 causes a perlbrew installation error.
 if [[ $TRAVIS_OS_NAME = osx ]] && [ -e "$HOME/perl5" ] ; then sudo chown -R "$(whoami):staff" "$HOME/perl5"; fi
-if [ ! -e "$HOME/perl5/perlbrew/etc/bashrc"]; then curl -L http://install.perlbrew.pl | bash; fi
+if [ ! -e "$HOME/perl5/perlbrew/etc/bashrc" ]; then curl -L http://install.perlbrew.pl | bash; fi
 source ~/perl5/perlbrew/etc/bashrc
 if [ ! -e "$HOME/travis-perl-helpers/init" ]; then
     git clone git://github.com/travis-perl/helpers ~/travis-perl-helpers
