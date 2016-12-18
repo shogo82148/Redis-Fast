@@ -8,7 +8,7 @@ use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
-my ($c, $srv) = redis(timeout => 1);
+my ($c, $srv) = redis(timeout => 3); # redis connection timeouts within 3 seconds.
 END { $c->() if $c }
 
 # Reconnect once
@@ -17,15 +17,6 @@ END { $c->() if $c }
 ## 2. and reconnect_on_error returns a value greater than and equal to 0
 ## 3. and a specified time seconds elapsed
 
-sub new_redis_fast {
-    my ($reconnect, $reconnect_on_error) = @_;
-    return Redis::Fast->new(
-        reconnect          => $reconnect,
-        server             => $srv,
-        reconnect_on_error => $reconnect_on_error,
-    );
-}
-my $cb_call_count = 0;
 my $sync_call_hset = sub {
     my ($client, $hint)  = @_;
     like (exception { $client->hset(1,1) },
@@ -52,105 +43,102 @@ my $async_call_hset = sub {
     return 'async';
 };
 
+
 # Check a condition 1.
-{
-    my $cb = sub {
-        my ($error, $ret, $cmd) = @_;
 
-        # increment a counter to test it later.
-        $cb_call_count++;
-
-        # tests each argument.
-        is $error, "ERR wrong number of arguments for 'hset' command";
-        ok !$ret;
-        is $cmd, 'HSET';
-        return 0;
-    };
-
-    for my $reconnect (0, 1) {
-        for my $call_hset ($sync_call_hset, $async_call_hset) {
-            my $r = new_redis_fast($reconnect, $cb);
-            my $hint = $call_hset->($r, $reconnect);
-
-            if ($reconnect == 0) {
-                is $cb_call_count, 0, 'do not call reconnect_on_error'
-                    or diag "call=$hint";
-            } else {
-                is $cb_call_count, 1, 'call reconnect_on_error once'
-                    or diag "call=$hint";
-            }
-
-            # reset a counter
-            $cb_call_count = 0;
-        }
+subtest 'reconnect option is 0: reconnect_on_error is not called' => sub {
+    for my $call_hset ($sync_call_hset, $async_call_hset) {
+        my $cb_call_count = 0;
+        my $r = Redis::Fast->new(
+            reconnect          => 0, # do not trigger reconnection.
+            server             => $srv,
+            reconnect_on_error => sub { $cb_call_count++ },
+        );
+        my $hint = $call_hset->($r, "reconnect is 0");
+        is $cb_call_count, 0, 'reconnect_on_error is not called'
+            or diag "call=$hint";
     }
-}
+};
+
+subtest 'reconnect option is 1: reconnect_on_error is called once' => sub {
+    for my $call_hset ($sync_call_hset, $async_call_hset) {
+        my $cb_call_count = 0;
+        my $r = Redis::Fast->new(
+            reconnect          => 1, # trigger reconnection until 1 second elapsed.
+            server             => $srv,
+            reconnect_on_error => sub {
+                my ($error, $ret, $cmd) = @_;
+
+                # increment a counter to test it later.
+                $cb_call_count++;
+
+                # tests each argument.
+                is $error, "ERR wrong number of arguments for 'hset' command";
+                ok !$ret;
+                is $cmd, 'HSET';
+                return 0; # 0 means invake reconnection as soon as possible.
+            },
+        );
+        my $hint = $call_hset->($r, "reconnect is 1");
+        is $cb_call_count, 1, 'reconnect_on_error is called once'
+            or diag "call=$hint";
+    }
+};
+
 
 # Check a condition 2.
-{
-    my $get_client_list = sub {
-        my $r_get_conn = new_redis_fast();
-        my $list = $r_get_conn->client_list;
-        my @list = split "\n", $list;
-        return @list;
-    };
-    my $kill_all_client = sub {
-        my $r_kill_conn = new_redis_fast();
-        my $ret = $r_kill_conn->client_kill('TYPE', 'normal');
-        undef $r_kill_conn;
 
-        my @list = $get_client_list->();
-        unless (scalar @list == 1) {
-            die "[BUG] client should be only r_get_con itself: list=" . (join "\n", @list);
-        }
-    };
-
-    my $cb = sub {
-        my $cb_return_value = shift;
-
-        return sub {
-            my ($error, $ret, $cmd) = @_;
-
-            # increment a counter to test it later.
-            $cb_call_count++;
-
-            # quit to test whether reconnect or not.
-            $kill_all_client->();
-
-            return $cb_return_value;
-        }
-    };
-
-    for my $cb_return_value (-1, 0) {
-        for my $call_hset ($sync_call_hset, $async_call_hset) {
-            my $reconnect = 1;
-
-            my $r = new_redis_fast($reconnect, $cb->($cb_return_value));
-            my $hint = $call_hset->($r, $cb_return_value);
-
-            if ($cb_return_value == -1 && $hint eq 'async') {
-                # If $cb_return_value is 0 and then $self->need_recoonect is set,
-                # calling the reconnect_on_error cb again is useless cost.
-                is $cb_call_count, 2, 'call reconnect_on_error each async call for hset'
-                    or diag "cb_return_value=$cb_return_value, hint=$hint";
-            } else {
-                is $cb_call_count, 1, 'call reconnect_on_error once'
-                    or diag "cb_return_value=$cb_return_value, hint=$hint";
-            }
-
-            my @client_list = $get_client_list->();
-            if ($cb_return_value == -1) {
-                is scalar @client_list, 1, 'do not reconnect after a contrived quit'
-                    or diag explain \@client_list . ", hint=$hint";
-            } else {
-                is scalar @client_list, 2, 'reconnect after a contrived quit'
-                    or diag explain \@client_list . ", hint=$hint";
-            }
-            # reset a counter
-            $cb_call_count = 0;
+subtest "reconnect_on_error returns -1: redis ERR doesn't trigger reconnection" => sub {
+    for my $call_hset ($sync_call_hset, $async_call_hset) {
+        my $connect_count = 0;
+        my $cb_call_count = 0;
+        my $r = Redis::Fast->new(
+            reconnect          => 1,
+            server             => $srv,
+            on_connect         => sub { $connect_count++ },
+            reconnect_on_error => sub {
+                $cb_call_count++;
+                return -1; # reconnect_on_error returns -1
+            },
+        );
+        my $hint = $call_hset->($r, "reconnect_on_error returns -1");
+        is $connect_count, 1, "redis ERR doesn't trigger reconnection";
+        if ($hint eq 'async') {
+            is $cb_call_count, 2, 'call reconnect_on_error each async call for hset'
+                or diag "cb_return_value=-1 hint=$hint";
+        } else {
+            is $cb_call_count, 1, 'call reconnect_on_error once'
+                or diag "cb_return_value=-1, hint=$hint";
         }
     }
-}
+};
+
+subtest "reconnect_on_error returns 0: redis ERR triggers reconnection" => sub {
+    for my $call_hset ($sync_call_hset, $async_call_hset) {
+        my $connect_count = 0;
+        my $cb_call_count = 0;
+        my $r = Redis::Fast->new(
+            reconnect          => 1,
+            server             => $srv,
+            on_connect         => sub { $connect_count++ },
+            reconnect_on_error => sub {
+                $cb_call_count++;
+                return 0; # reconnect_on_error returns 0
+            },
+        );
+        my $hint = $call_hset->($r, "reconnect_on_error returns 0");
+        is $connect_count, 2, "redis ERR triggers reconnection";
+
+        # If $cb_return_value is 0 and then $self->need_recoonect is set,
+        # calling the reconnect_on_error cb again is useless cost.
+        is $cb_call_count, 1, 'call reconnect_on_error once'
+            or diag "cb_return_value=-1, hint=$hint";
+    }
+};
+
+done_testing;
+
+__END__
 
 # Check a condition 3.
 {
@@ -166,7 +154,7 @@ my $async_call_hset = sub {
 
     my $reconnect = 1;
 
-    # Do not call a reconnect_on_error before a second elapse.
+    # Do not call a reconnect_on_error before redis connection timeout.
     {
         for my $call_hset ($sync_call_hset, $async_call_hset) {
             my $r = new_redis_fast($reconnect, $cb);
@@ -192,7 +180,7 @@ my $async_call_hset = sub {
         }
     }
 
-    # Call a reconnect_on_error after a second elapse.
+    # Call a reconnect_on_error after redis connection timeout.
     {
         for my $call_hset ($sync_call_hset, $async_call_hset) {
             my $r = new_redis_fast($reconnect, $cb);
@@ -201,11 +189,11 @@ my $async_call_hset = sub {
                 my $hint = $call_hset->($r, $_cb_return_value);
 
                 if ($_cb_return_value == 0) {
-                    # once: call a cb and return 0.
+                    # 1st call: call a cb and return 0.
                     is $cb_call_count, 1, 'call reconnect_on_error once'
                         or diag "cb_return_value=$_cb_return_value, call=$hint";
                 } elsif ($_cb_return_value == 1) {
-                    # twice: do not wait, so call a cb and return 1.
+                    # 2nd call: do not wait, so call a cb and return 1.
                     is $cb_call_count, 2, 'call reconnect_on_error twice'
                         or diag "cb_return_value=$_cb_return_value, call=$hint";
                 } else {
@@ -214,8 +202,8 @@ my $async_call_hset = sub {
                         or diag "cb_return_value=$_cb_return_value, call=$hint";
                 }
 
-                # A second elapsed
-                sleep 1;
+                # wait for connection timeout
+                sleep 2;
 
                 # do not reset a counter
             }
