@@ -24,11 +24,7 @@ if [ ! -e "$HOME/travis-perl-helpers/.git" ]; then
     if [[ $TRAVIS_OS_NAME = osx ]]; then export REBUILD_PERL=1; fi
 
     build-perl
-    perl -V
     cpan-install App::cpanminus
-else
-    source ~/perl5/perlbrew/etc/bashrc
-    perl -V
 fi
 
 

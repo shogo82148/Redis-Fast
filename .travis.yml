@@ -27,6 +27,8 @@ cache:
     - $HOME/perl5
     - redis-$REDIS_VERSION
 script:
+  - source ~/perl5/perlbrew/etc/bashrc
+  - perl -V
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH redis-server --version
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH LC_ALL=$TEST_LANG minil test --all
 sudo: true
