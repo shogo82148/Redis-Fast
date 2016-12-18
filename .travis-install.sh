@@ -9,7 +9,7 @@ if which apt-get >/dev/null; then
 fi
 
 # reinstall perl because some modules are too old.
-if [ ! -e "$HOME/travis-perl-helpers" ]; then
+if [ ! -e "$HOME/travis-perl-helpers/.git" ]; then
     # Root owner of $HOME/perl5 causes a perlbrew installation error.
     if [[ $TRAVIS_OS_NAME = osx ]] && [ -e "$HOME/perl5" ] ; then sudo chown -R "$(whoami):staff" "$HOME/perl5"; fi
 
@@ -26,11 +26,14 @@ if [ ! -e "$HOME/travis-perl-helpers" ]; then
     build-perl
     perl -V
     cpan-install App::cpanminus
+else
+    source ~/perl5/perlbrew/etc/bashrc
+    perl -V
 fi
 
 
 # install redis.
-if [ ! -e "redis-$REDIS_VERSION" ]; then
+if [ ! -e "redis-$REDIS_VERSION/src/redis-server" ]; then
     wget "https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz"
     tar xzf "$REDIS_VERSION.tar.gz"
     make -C "redis-$REDIS_VERSION"
