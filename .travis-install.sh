@@ -36,7 +36,7 @@ if [ ! -e "redis-bin/redis-server" ]; then
     tar xzf "$REDIS_VERSION.tar.gz"
     make -C "redis-$REDIS_VERSION"
     mkdir -p redis-bin
-    cp "redis-REDIS_VERSION/src/redis-server" redis-bin/redis-server
+    cp "redis-$REDIS_VERSION/src/redis-server" redis-bin/redis-server
 fi
 
 # install CPAN modules.
