@@ -20,9 +20,7 @@ branches:
   only:
   - master
 install:
-  - ./.travis-install.sh
-  - source ~/perl5/perlbrew/etc/bashrc
-  - source ~/travis-perl-helpers/init
+  - source ./.travis-install.sh
 cache:
   directories:
     - $HOME/travis-perl-helpers
