@@ -1,6 +1,9 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - support reconnecting on the specified error (thanks @yoheimuta)
+    - experimental support of IPv6
+    - fix automatic refresh errors of sentinels list
 
 0.18 2016-01-26T13:09:12Z
     - add missing dependencies (Test::UNIXSock, Parallel::ForkManager)
