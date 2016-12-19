@@ -129,7 +129,7 @@ subtest "reconnect_on_error returns 0: redis ERR triggers reconnection" => sub {
         my $hint = $call_hset->($r, "reconnect_on_error returns 0");
         is $connect_count, 2, "redis ERR triggers reconnection";
 
-        # If $cb_return_value is 0 and then $self->need_recoonect is set,
+        # If $cb_return_value is 0 and then $self->need_reconnect is set,
         # calling the reconnect_on_error cb again is useless cost.
         is $cb_call_count, 1, 'call reconnect_on_error once'
             or diag "cb_return_value=-1, hint=$hint";
