@@ -136,81 +136,87 @@ subtest "reconnect_on_error returns 0: redis ERR triggers reconnection" => sub {
     }
 };
 
-done_testing;
-
-__END__
 
 # Check a condition 3.
-{
-    my $cb_return_value = 0;
-    my $cb = sub {
-        my ($error, $ret, $cmd) = @_;
 
-        # increment a counter to test it later.
-        $cb_call_count++;
+subtest "reconnection will not be triggered until specified seconds elapsed." => sub {
+    for my $call_hset ($sync_call_hset, $async_call_hset) {
+        my $hint;
+        my $cb_call_count = 0;
+        my $cb_return_value = 0;
+        my $r = Redis::Fast->new(
+            reconnect          => 1,
+            server             => $srv,
+            reconnect_on_error => sub {
+                $cb_call_count++;
+                return $cb_return_value;
+            },
+        );
 
-        return $cb_return_value;
-    };
+        # reconnect if the redis returns ERR,
+        # and next reconnection will be triggered.
+        $cb_return_value = 0;
 
-    my $reconnect = 1;
+        $hint = $call_hset->($r, $cb_return_value);
+        is $cb_call_count, 1, 'call reconnect_on_error once'
+            or diag "cb_return_value=$cb_return_value, call=$hint";
 
-    # Do not call a reconnect_on_error before redis connection timeout.
-    {
-        for my $call_hset ($sync_call_hset, $async_call_hset) {
-            my $r = new_redis_fast($reconnect, $cb);
+        # reconnect if the redis returns ERR,
+        # and next reconnection will not be triggered until 1 second elapsed.
+        $cb_return_value = 1;
 
-            for my $_cb_return_value (0, 1, 2) {
-                $cb_return_value = $_cb_return_value;
-                my $hint = $call_hset->($r, $_cb_return_value);
+        $hint = $call_hset->($r, $cb_return_value);
+        is $cb_call_count, 2, 'call reconnect_on_error twice'
+            or diag "cb_return_value=$cb_return_value, call=$hint";
 
-                if ($_cb_return_value == 0) {
-                    # once: call a cb and return 0.
-                    is $cb_call_count, 1, 'call reconnect_on_error once'
-                        or diag "cb_return_value=$_cb_return_value, call=$hint";
-                } else {
-                    # twice: do not wait, so call a cb and return 1.
-                    is $cb_call_count, 2, 'call reconnect_on_error twice, not 3 or 4 times'
-                        or diag "cb_return_value=$_cb_return_value, call=$hint";
-                }
-                # do not sleep a second
-                # do not reset a counter
-            }
-            # reset a counter
-            $cb_call_count = 0;
-        }
+        # reconnection is not triggered
+        # because $cb_return_value seconds have not passed since the last reconnection.
+        $hint = $call_hset->($r, $cb_return_value);
+        is $cb_call_count, 2, 'call reconnect_on_error twice'
+            or diag "cb_return_value=$cb_return_value, call=$hint";
     }
+};
 
-    # Call a reconnect_on_error after redis connection timeout.
-    {
-        for my $call_hset ($sync_call_hset, $async_call_hset) {
-            my $r = new_redis_fast($reconnect, $cb);
-            for my $_cb_return_value (0, 1, 2) {
-                $cb_return_value = $_cb_return_value;
-                my $hint = $call_hset->($r, $_cb_return_value);
+subtest "reconnection will be triggered after specified seconds elapsed." => sub {
+    for my $call_hset ($sync_call_hset, $async_call_hset) {
+        my $hint;
+        my $cb_call_count = 0;
+        my $cb_return_value = 0;
+        my $r = Redis::Fast->new(
+            reconnect          => 1,
+            server             => $srv,
+            reconnect_on_error => sub {
+                $cb_call_count++;
+                return $cb_return_value;
+            },
+        );
 
-                if ($_cb_return_value == 0) {
-                    # 1st call: call a cb and return 0.
-                    is $cb_call_count, 1, 'call reconnect_on_error once'
-                        or diag "cb_return_value=$_cb_return_value, call=$hint";
-                } elsif ($_cb_return_value == 1) {
-                    # 2nd call: do not wait, so call a cb and return 1.
-                    is $cb_call_count, 2, 'call reconnect_on_error twice'
-                        or diag "cb_return_value=$_cb_return_value, call=$hint";
-                } else {
-                    # 3 times: wait for a second, so call a cb and return 2.
-                    is $cb_call_count, 3, 'call reconnect_on_error 3 times, not 4 times'
-                        or diag "cb_return_value=$_cb_return_value, call=$hint";
-                }
+        # reconnect if the redis returns ERR,
+        # and next reconnection will be triggered.
+        $cb_return_value = 0;
 
-                # wait for connection timeout
-                sleep 2;
+        $hint = $call_hset->($r, $cb_return_value);
+        is $cb_call_count, 1, 'call reconnect_on_error once'
+            or diag "cb_return_value=$cb_return_value, call=$hint";
 
-                # do not reset a counter
-            }
-            # reset a counter
-            $cb_call_count = 0;
-        }
+        # reconnect if the redis returns ERR,
+        # and next reconnection will not be triggered until 1 second elapsed.
+        $cb_return_value = 1;
+
+        $hint = $call_hset->($r, $cb_return_value);
+        is $cb_call_count, 2, 'call reconnect_on_error twice'
+            or diag "cb_return_value=$cb_return_value, call=$hint";
+
+        # wait for $cb_return_value seconds to pass since the last reconnection.
+        # +1 second is a buffer.
+        sleep $cb_return_value + 1;
+
+        # reconnection is triggered
+        # because $cb_return_value seconds have passed since the last reconnection.
+        $hint = $call_hset->($r, $cb_return_value);
+        is $cb_call_count, 3, 'call reconnect_on_error twice'
+            or diag "cb_return_value=$cb_return_value, call=$hint";
     }
-}
+};
 
 done_testing();
