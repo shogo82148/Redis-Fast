@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.19 2016-12-20T11:33:33Z
     - support reconnecting on the specified error (thanks @yoheimuta)
     - experimental support of IPv6
     - fix automatic refresh errors of sentinels list
