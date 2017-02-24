@@ -1,6 +1,7 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - Fix build issue on newer Perl
 
 0.19 2016-12-20T11:33:33Z
     - support reconnecting on the specified error (thanks @yoheimuta)
