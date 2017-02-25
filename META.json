@@ -79,7 +79,7 @@
          "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
-   "version" : "0.19",
+   "version" : "0.20",
    "x_contributors" : [
       "sunnavy <sunnavy@bestpractical.com>",
       "U-LIFEBOOK\\Administrator <Administrator@LIFEBOOK.(none)>",
@@ -122,5 +122,5 @@
       "Syohei YOSHIDA <syohex@gmail.com>",
       "yoheimuta <yoheimuta@gmail.com>"
    ],
-   "x_serialization_backend" : "JSON::PP version 2.27202"
+   "x_serialization_backend" : "JSON::PP version 2.27300_01"
 }
