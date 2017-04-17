@@ -9,6 +9,8 @@ use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 use Net::EmptyPort qw(empty_port);
+use version;
+use POSIX qw(setlocale LC_ALL);
 
 my ($c, $srv) = redis(timeout => 1);
 END { $c->() if $c }
@@ -209,6 +211,44 @@ subtest "Reconnect works after WATCH + MULTI + DISCARD" => sub {
   ok(($c, $srv) = redis(port => $port, timeout => 1), "respawn redis on port $port");
 
   ok($r->set('reconnect' => 1), 'setting second key should not fail');
+};
+
+subtest "Disconnect inside MULTI" => sub {
+  $c->();    ## Make previous server is dead
+
+  my $port = empty_port();
+  ok(($c, $srv) = redis(port => $port, timeout => 10), "spawn redis on port $port");
+  ok(my $r = Redis::Fast->new(reconnect => 2, server => $srv, cnx_timeout => 1,
+                              read_timeout => 1, write_timeout => 1), 'connected to our test redis-server');
+
+  setlocale(LC_ALL, "C");
+  plan skip_all => 'DEBUG SLEEP not implemented'
+    if version->parse($r->info()->{redis_version}) < version->parse(2.2.12);
+  ok($r->multi(), 'start transacion');
+  ok($r->set('reconnect' => 1), 'set key');
+  $r->debug("sleep", 2);
+  like(exception { $r-> exec() }, qr/Error while reading from Redis server: Resource temporarily unavailable/i, "timeout error");
+  ok(!$r->ping(), 'disconnected');
+};
+
+subtest "Disconnect inside WATCH + MULTI" => sub {
+  $c->();    ## Make previous server is dead
+
+  my $port = empty_port();
+  ok(($c, $srv) = redis(port => $port, timeout => 10), "spawn redis on port $port");
+  ok(my $r = Redis::Fast->new(reconnect => 2, server => $srv, cnx_timeout => 1,
+                              read_timeout => 1, write_timeout => 1), 'connected to our test redis-server');
+  plan skip_all => 'DEBUG SLEEP not implemented'
+    if version->parse($r->info()->{redis_version}) < version->parse(2.2.12);
+
+  setlocale(LC_ALL, "C");
+  ok($r->set('watch' => 'watch'), 'set watch key');
+  ok($r->watch('watch'), 'start watching key');
+  ok($r->multi(), 'start transacion');
+  ok($r->set('reconnect' => 1), 'set key');
+  $r->debug("sleep", 2);
+  like(exception { $r-> exec() }, qr/Error while reading from Redis server: Resource temporarily unavailable/i, "timeout error");
+  ok(!$r->ping(), 'disconnected');
 };
 
 done_testing();

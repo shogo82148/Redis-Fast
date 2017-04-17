@@ -799,6 +799,10 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
         // else destructor will release cbt
 
         if(res == WAIT_FOR_EVENT_READ_TIMEOUT || res == WAIT_FOR_EVENT_WRITE_TIMEOUT) {
+            if(self->flags & (FLAG_INSIDE_TRANSACTION | FLAG_INSIDE_WATCH)) {
+                self->is_connected = 0;
+                redisAsyncFree(self->ac);
+            }
             snprintf(self->error, MAX_ERROR_SIZE, "Error while reading from Redis server: %s", strerror(EAGAIN));
             errno = EAGAIN;
             croak("%s", self->error);
