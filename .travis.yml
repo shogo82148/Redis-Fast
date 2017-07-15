@@ -11,7 +11,8 @@ perl:
   - "5.10"
 os:
   - linux
-  - osx
+# Unfortunately, perl in osx is currently broken.
+#  - osx
 env:
   - REDIS_VERSION=4.0-rc2 TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=3.2.8 TEST_LANG=en_US.UTF-8
