@@ -1,5 +1,6 @@
 language: perl
 perl:
+  - "5.26"
   - "5.24"
   - "5.22"
   - "5.20"
@@ -10,7 +11,8 @@ perl:
   - "5.10"
 os:
   - linux
-  - osx
+# Unfortunately, perl in osx is currently broken.
+#  - osx
 env:
   - REDIS_VERSION=4.0-rc3 TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=3.2.9 TEST_LANG=en_US.UTF-8
