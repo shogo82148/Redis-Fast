@@ -212,6 +212,8 @@ subtest "Reconnect works after WATCH + MULTI + DISCARD" => sub {
 };
 
 subtest "Reconnect behaviour differs from cpan Redis module #73" => sub {
+  $c->();    ## Make previous server is dead
+
   my $port = empty_port();
   ok(($c, $srv) = redis(port => $port, timeout => 1), "spawn redis on port $port");
 
