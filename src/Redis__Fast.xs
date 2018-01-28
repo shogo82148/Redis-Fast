@@ -317,11 +317,20 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     while(!self->is_connected) {
         res = wait_for_event(self, timeout, timeout);
         if(self->ac == NULL) {
+            // set is_connected flag to reconnect.
+            // see https://github.com/shogo82148/Redis-Fast/issues/73
+            self->is_connected = 1;
+
             return NULL;
         }
         if(res != WAIT_FOR_EVENT_OK) {
             DEBUG_MSG("error: %d", res);
             redisAsyncFree(self->ac);
+
+            // set is_connected flag to reconnect.
+            // see https://github.com/shogo82148/Redis-Fast/issues/73
+            self->is_connected = 1;
+
             self->ac = NULL;
             return NULL;
         }

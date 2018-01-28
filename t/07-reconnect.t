@@ -211,6 +211,40 @@ subtest "Reconnect works after WATCH + MULTI + DISCARD" => sub {
   ok($r->set('reconnect' => 1), 'setting second key should not fail');
 };
 
+subtest "Reconnect behaviour differs from cpan Redis module #73" => sub {
+  $c->();    ## Make previous server is dead
+
+  my $port = empty_port();
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "spawn redis on port $port");
+
+  ok(my $r = Redis::Fast->new(
+    reconnect     => 1,
+    every         => 100_000,
+    cnx_timeout   => 3,
+    read_timeout  => 1,
+    write_timeout => 1,
+    server => $srv
+  ), 'connected to our test redis-server');
+  ok($r->set(reconnect => $$), 'send command');
+
+  $c->();    ## Make sure the server is dead
+
+  like(
+    exception { $r->set(reconnect => $$) },
+    qr{Could not connect to Redis server at},
+    'Eventually it gives up and dies (first try)',
+  );
+
+  like(
+    exception { $r->set(reconnect => $$) },
+    qr{Could not connect to Redis server at},
+    'Eventually it gives up and dies (second try)',
+  );
+
+  ok(($c, $srv) = redis(port => $port, timeout => 1), "respawn redis on port $port");
+  ok($r->set(reconnect => $$), 'a command works after respawn');
+};
+
 done_testing();
 
 
