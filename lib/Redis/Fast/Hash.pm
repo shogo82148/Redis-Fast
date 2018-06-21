@@ -67,6 +67,9 @@ sub CLEAR {
 
 1;    ## End of Redis::Hash
 
+=head1 NAME
+
+    Redis::Hash - tie Perl hashes to Redis hashes
 
 =head1 SYNOPSYS
 

@@ -34,6 +34,9 @@ sub get_masters {
 1;
 
 __END__
+=head1 NAME
+
+    Redis::Fast::Sentinel - connect to a Sentinel instance
 
 =head1 SYNOPSIS
 
