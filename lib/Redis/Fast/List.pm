@@ -85,6 +85,10 @@ sub DESTROY { $_[0]->quit }
 
 1;    ## End of Redis::List
 
+=head1 NAME
+
+    Redis::List - tie Perl arrays to Redis lists
+
 =head1 SYNOPSYS
 
     tie @my_list, 'Redis::List', 'list_name', @Redis_new_parameters;
