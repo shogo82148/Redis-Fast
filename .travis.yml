@@ -28,7 +28,7 @@ cache:
   directories:
   - redis-$REDIS_VERSION
 install:
-  - test -e redis-$REDIS_VERSION || ( wget https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz && tar xzf $REDIS_VERSION.tar.gz && make -C redis-$REDIS_VERSION )
+  - test -e redis-$REDIS_VERSION/src/redis-server || ( wget https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz && tar xzf $REDIS_VERSION.tar.gz && make -C redis-$REDIS_VERSION )
   - cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
   - cpanm --quiet --with-develop --installdeps --notest .
 script:
