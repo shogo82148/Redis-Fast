@@ -20,23 +20,11 @@ env:
   - REDIS_VERSION=3.2.12  TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=2.8.24  TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=4.0.11  TEST_LANG=ja_JP.UTF-8
-branches:
-  only:
-  - master
-before_install:
-  - if which apt-get >/dev/null; then sudo apt-get update && sudo apt-get --reinstall install -qq language-pack-en language-pack-ja; fi
-  # Root owner of $HOME/perl5 causes a perlbrew installation error.
-  - if [[ $TRAVIS_OS_NAME = osx ]] && [ -e "$HOME/perl5" ] ; then sudo chown -R $(whoami):staff $HOME/perl5; fi
-  - curl -L http://install.perlbrew.pl | bash
-  - source ~/perl5/perlbrew/etc/bashrc
-  - git clone git://github.com/travis-perl/helpers ~/travis-perl-helpers
-  # Existence of prebuilt perl causes a build-perl error.
-  - if [[ $TRAVIS_OS_NAME = osx ]]; then perlbrew list | xargs perlbrew uninstall --yes; fi
-  - source ~/travis-perl-helpers/init
-  - if [[ $TRAVIS_OS_NAME = osx ]]; then export REBUILD_PERL=1; fi
-  - build-perl
-  - perl -V
-  - cpan-install App::cpanminus
+sudo: false
+addons:
+  apt:
+    packages:
+      - language-pack-ja
 install:
   - wget https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz && tar xzf $REDIS_VERSION.tar.gz && make -C redis-$REDIS_VERSION
   - cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
@@ -44,4 +32,3 @@ install:
 script:
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH redis-server --version
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH LC_ALL=$TEST_LANG minil test --all
-sudo: true
