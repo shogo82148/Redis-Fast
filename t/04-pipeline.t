@@ -36,7 +36,7 @@ sub pipeline_ok {
 pipeline_ok 'single-command pipeline', ([set => [foo => 'bar'], 'OK'],);
 
 pipeline_ok 'pipeline with embedded error',
-  ([set => [clunk => 'eth'], 'OK'], [oops => [], undef, q[ERR unknown command 'OOPS']], [get => ['clunk'], 'eth'],);
+  ([set => [clunk => 'eth'], 'OK'], [oops => [], undef, re(q[\AERR unknown command ['`]OOPS['`](:?, with args beginning with: )?\z])], [get => ['clunk'], 'eth'],);
 
 pipeline_ok 'keys in pipelined mode',
   ([keys => ['*'], bag(qw<foo clunk>)], [keys => [], undef, q[ERR wrong number of arguments for 'keys' command]],);
