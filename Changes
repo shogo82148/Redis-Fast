@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - Fix #80 Tests fail with redis-server 4.0.11
+    - Fix spelling error #79 (thanks @guimard)
 
 0.21 2018-01-28T01:02:14Z
     - Fix reconnect behaviour differs from cpan Redis module #73
