@@ -35,4 +35,4 @@ install:
   - cpanm -L extlib --quiet --with-develop --installdeps --notest .
 script:
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH redis-server --version
-  - PERL5LIB=$PWD/extlib:$PERL5LIB PATH=$PWD/redis-$REDIS_VERSION/src:$PATH LC_ALL=$TEST_LANG ./extlib/bin/minil test --all
+  - PERL5LIB=$PWD/extlib/lib:$PERL5LIB PATH=$PWD/redis-$REDIS_VERSION/src:$PATH LC_ALL=$TEST_LANG ./extlib/bin/minil test --all
