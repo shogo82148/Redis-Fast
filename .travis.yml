@@ -1,5 +1,6 @@
 language: perl
 perl:
+  - "5.28"
   - "5.26"
   - "5.24"
   - "5.22"
@@ -14,11 +15,11 @@ os:
 # Unfortunately, perl in osx is currently broken.
 #  - osx
 env:
-  - REDIS_VERSION=5.0.2 TEST_LANG=en_US.UTF-8
-  - REDIS_VERSION=4.0.11 TEST_LANG=en_US.UTF-8
-  - REDIS_VERSION=3.2.12 TEST_LANG=en_US.UTF-8
+  - REDIS_VERSION=5.0.4 TEST_LANG=en_US.UTF-8
+  - REDIS_VERSION=4.0.14 TEST_LANG=en_US.UTF-8
+  - REDIS_VERSION=3.2.13 TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=2.8.24 TEST_LANG=en_US.UTF-8
-  - REDIS_VERSION=4.0.11 TEST_LANG=ja_JP.UTF-8
+  - REDIS_VERSION=4.0.14 TEST_LANG=ja_JP.UTF-8
 sudo: false
 addons:
   apt:
@@ -27,10 +28,11 @@ addons:
 cache:
   directories:
   - redis-$REDIS_VERSION
+  - extlib
 install:
   - test -e redis-$REDIS_VERSION/src/redis-server || ( wget https://github.com/antirez/redis/archive/$REDIS_VERSION.tar.gz && tar xzf $REDIS_VERSION.tar.gz && make -C redis-$REDIS_VERSION )
-  - cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
-  - cpanm --quiet --with-develop --installdeps --notest .
+  - cpanm -L extlib --quiet --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
+  - cpanm -L extlib --quiet --with-develop --installdeps --notest .
 script:
   - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH redis-server --version
-  - PATH=$PWD/redis-$REDIS_VERSION/src:$PATH LC_ALL=$TEST_LANG minil test --all
+  - PERL5LIB=$PWD/extlib/lib/perl5:$PERL5LIB PATH=$PWD/redis-$REDIS_VERSION/src:$PATH LC_ALL=$TEST_LANG ./extlib/bin/minil test --all
