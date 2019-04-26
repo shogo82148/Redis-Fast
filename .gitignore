@@ -27,3 +27,4 @@ MYMETA.*
 /inc/
 *.log
 t/*.log
+/extlib/
