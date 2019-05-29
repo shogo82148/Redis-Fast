@@ -16,7 +16,7 @@ os:
 # Unfortunately, perl in osx is currently broken.
 #  - osx
 env:
-  - REDIS_VERSION=5.0.4 TEST_LANG=en_US.UTF-8
+  - REDIS_VERSION=5.0.5 TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=4.0.14 TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=3.2.13 TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=2.8.24 TEST_LANG=en_US.UTF-8
