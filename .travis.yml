@@ -1,16 +1,11 @@
 language: perl
+dist: xenial
 perl:
   - "5.30"
   - "5.28"
   - "5.26"
   - "5.24"
   - "5.22"
-  - "5.20"
-  - "5.18"
-  - "5.16"
-  - "5.14"
-  - "5.12"
-  - "5.10"
 os:
   - linux
 # Unfortunately, perl in osx is currently broken.
@@ -21,7 +16,6 @@ env:
   - REDIS_VERSION=3.2.13 TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=2.8.24 TEST_LANG=en_US.UTF-8
   - REDIS_VERSION=4.0.14 TEST_LANG=ja_JP.UTF-8
-sudo: false
 addons:
   apt:
     packages:
