@@ -1,4 +1,4 @@
-requires 'perl', '5.022000';
+requires 'perl', '5.008001';
 requires 'Try::Tiny';
 requires 'Time::HiRes';
 
