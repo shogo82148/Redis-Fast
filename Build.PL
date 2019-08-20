@@ -25,7 +25,7 @@ my %args = (
     requires => {
         'Time::HiRes' => '0',
         'Try::Tiny' => '0',
-        'perl' => '5.022000',
+        'perl' => '5.008001',
     },
 
     recommends => {
