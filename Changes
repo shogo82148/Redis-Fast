@@ -2,6 +2,9 @@ Revision history for Redis
 
 {{$NEXT}}
 
+0.25 2019-08-20T01:57:40Z
+    - support older perl again
+
 0.24 2019-08-19T22:29:23Z
     - drop support of perl 5.20
 
