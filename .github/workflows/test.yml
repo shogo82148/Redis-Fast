@@ -26,7 +26,7 @@ jobs:
         perl-version: ${{ matrix.perl }}
 
     - name: Set up Redis ${{ matrix.redis }}
-      uses: shogo82148/actions-setup-redis@v0
+      uses: shogo82148/actions-setup-redis@v0.0.1
       with:
         redis-version: ${{ matrix.redis }}
 
