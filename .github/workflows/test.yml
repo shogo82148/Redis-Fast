@@ -1,0 +1,42 @@
+name: "Test"
+on:
+- pull_request
+- push
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+        - ubuntu-latest
+        - macOS-latest
+        perl:
+        - "5.30"
+        redis:
+        - "5.0"
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Set up Perl ${{ matrix.perl }}
+      uses: shogo82148/actions-setup-perl@v1
+      with:
+        perl-version: ${{ matrix.perl }}
+
+    - name: Set up Redis ${{ matrix.redis }}
+      uses: shogo82148/actions-setup-redis@v0
+      with:
+        redis-version: ${{ matrix.redis }}
+
+    - name: ping
+      run: redis-cli ping
+
+    - name: Install
+      run: |
+        cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
+        cpanm --quiet --with-develop --installdeps --notest .
+
+    - name: Test
+      run: minil test --all
