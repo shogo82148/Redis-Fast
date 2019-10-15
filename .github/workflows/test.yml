@@ -29,12 +29,11 @@ jobs:
       uses: shogo82148/actions-setup-redis@v0.0.3
       with:
         redis-version: ${{ matrix.redis }}
-
-    - name: ping
-      run: redis-cli ping
+        auto-start: false
 
     - name: Install
       run: |
+        git submodule update --recursive
         cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
         cpanm --quiet --with-develop --installdeps --notest .
 
