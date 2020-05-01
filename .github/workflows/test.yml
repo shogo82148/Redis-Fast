@@ -41,7 +41,7 @@ jobs:
         perl-version: ${{ matrix.perl }}
 
     - name: Set up Redis ${{ matrix.redis }}
-      uses: shogo82148/actions-setup-redis@v1
+      uses: shogo82148/actions-setup-redis@v1.3.0
       with:
         redis-version: ${{ matrix.redis }}
         auto-start: false
@@ -92,7 +92,7 @@ jobs:
         perl-version: ${{ matrix.perl }}
 
     - name: Set up Redis ${{ matrix.redis }}
-      uses: shogo82148/actions-setup-redis@v1
+      uses: shogo82148/actions-setup-redis@v1.3.0
       with:
         redis-version: ${{ matrix.redis }}
         auto-start: false
