@@ -79,7 +79,7 @@ sub _new_on_connect_cb {
                 $err = $_;
             };
             if(defined $err) {
-                if($err =~ /ERR invalid password/) {
+                if($err =~ /ERR invalid password|WRONGPASS invalid username-password pair/) {
                     # password setting is incorrect, no need to reconnect
                     die("Redis server refused password");
                 } else {
