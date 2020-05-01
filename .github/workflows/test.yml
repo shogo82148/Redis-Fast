@@ -9,6 +9,7 @@ jobs:
   test-ubuntu:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         perl:
         - "5.30"
@@ -59,6 +60,7 @@ jobs:
   test-macOS:
     runs-on: macOS-latest
     strategy:
+      fail-fast: false
       matrix:
         perl:
         - "5.30"
