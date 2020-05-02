@@ -1,6 +1,7 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - fix miss-detecting "Redis server refused password" error with Redis 6.0
 
 0.25 2019-08-20T01:57:40Z
     - support older perl again
@@ -16,7 +17,7 @@ Revision history for Redis
     - Fix spelling error #79 (thanks @guimard)
 
 0.21 2018-01-28T01:02:14Z
-    - Fix reconnect behaviour differs from cpan Redis module #73
+    - Fix reconnect behavior differs from cpan Redis module #73
 
 0.20 2017-02-25T22:48:26Z
     - Fix build issue on newer Perl
