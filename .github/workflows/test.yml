@@ -9,6 +9,7 @@ jobs:
   test-ubuntu:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         perl:
         - "5.30"
@@ -23,6 +24,7 @@ jobs:
         - "5.12"
         - "5.10"
         redis:
+        - "6.0"
         - "5.0"
         - "4.0"
         - "3.2"
@@ -31,7 +33,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
 
     - name: Set up Perl ${{ matrix.perl }}
       uses: shogo82148/actions-setup-perl@v1
@@ -58,6 +60,7 @@ jobs:
   test-macOS:
     runs-on: macOS-latest
     strategy:
+      fail-fast: false
       matrix:
         perl:
         - "5.30"
@@ -72,6 +75,7 @@ jobs:
         - "5.12"
         - "5.10"
         redis:
+        - "6.0"
         - "5.0"
         - "4.0"
         - "3.2"
@@ -80,7 +84,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
 
     - name: Set up Perl ${{ matrix.perl }}
       uses: shogo82148/actions-setup-perl@v1
