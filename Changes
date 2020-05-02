@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.26 2020-05-02T04:14:35Z
     - fix miss-detecting "Redis server refused password" error with Redis 6.0
 
 0.25 2019-08-20T01:57:40Z
