@@ -23,17 +23,12 @@
 #define FLAG_INSIDE_TRANSACTION 0x01
 #define FLAG_INSIDE_WATCH       0x02
 
-//#define DEBUG
-#if defined(DEBUG)
 #define DEBUG_MSG(fmt, ...) \
-    do {                                                                \
-        fprintf(stderr, "[%s:%d:%s]: ", __FILE__, __LINE__, __func__);    \
+    if (self->debug) {                                                  \
+        fprintf(stderr, "[%s:%d:%s]: ", __FILE__, __LINE__, __func__);  \
         fprintf(stderr, fmt, __VA_ARGS__);                              \
         fprintf(stderr, "\n");                                          \
-    } while(0)
-#else
-#define DEBUG_MSG(fmt, ...)
-#endif
+    }
 
 #define EQUALS_COMMAND(len, cmd, expected) ((len) == sizeof(expected) - 1 && memcmp(cmd, expected, sizeof(expected) - 1) == 0)
 
@@ -45,6 +40,7 @@ typedef struct redis_fast_s {
     char* error;
     int reconnect;
     int every;
+    int debug;
     double cnx_timeout;
     double read_timeout;
     double write_timeout;
@@ -98,29 +94,34 @@ typedef struct redis_fast_subscribe_cb_s {
 #define WAIT_FOR_WRITE 0x02
 typedef struct redis_fast_event_s {
     int flags;
+    Redis__Fast self;
 } redis_fast_event_t;
 
 
 static void AddRead(void *privdata) {
     redis_fast_event_t *e = (redis_fast_event_t*)privdata;
+    Redis__Fast self = e->self;
     e->flags |= WAIT_FOR_READ;
     DEBUG_MSG("flags = %x", e->flags);
 }
 
 static void DelRead(void *privdata) {
     redis_fast_event_t *e = (redis_fast_event_t*)privdata;
+    Redis__Fast self = e->self;
     e->flags &= ~WAIT_FOR_READ;
     DEBUG_MSG("flags = %x", e->flags);
 }
 
 static void AddWrite(void *privdata) {
     redis_fast_event_t *e = (redis_fast_event_t*)privdata;
+    Redis__Fast self = e->self;
     e->flags |= WAIT_FOR_WRITE;
     DEBUG_MSG("flags = %x", e->flags);
 }
 
 static void DelWrite(void *privdata) {
     redis_fast_event_t *e = (redis_fast_event_t*)privdata;
+    Redis__Fast self = e->self;
     e->flags &= ~WAIT_FOR_WRITE;
     DEBUG_MSG("flags = %x", e->flags);
 }
@@ -130,6 +131,7 @@ static void Cleanup(void *privdata) {
 }
 
 static int Attach(redisAsyncContext *ac) {
+    Redis__Fast self = (Redis__Fast)ac->data;
     redis_fast_event_t *e;
 
     /* Nothing should be attached when something is already attached */
@@ -139,6 +141,7 @@ static int Attach(redisAsyncContext *ac) {
     /* Create container for context and r/w events */
     e = (redis_fast_event_t*)malloc(sizeof(*e));
     e->flags = 0;
+    e->self = self;
 
     /* Register functions to start/stop listening for events */
     ac->ev.addRead = AddRead;
@@ -880,8 +883,8 @@ PREINIT:
 redis_fast_t* self;
 CODE:
 {
-    DEBUG_MSG("%s", "start");
     Newxz(self, sizeof(redis_fast_t), redis_fast_t);
+    DEBUG_MSG("%s", "start");
     self->error = (char*)malloc(MAX_ERROR_SIZE);
     self->reconnect_on_error = NULL;
     self->next_reconnect_on_error_at = -1;
@@ -932,6 +935,14 @@ CODE:
 OUTPUT:
     RETVAL
 
+int
+__set_debug(Redis::Fast self, int val)
+CODE:
+{
+    RETVAL = self->debug = val;
+}
+OUTPUT:
+    RETVAL
 
 double
 __set_cnx_timeout(Redis::Fast self, double val)

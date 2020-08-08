@@ -15,7 +15,6 @@ sub new {
         xs_files             => { './src/Redis__Fast.xs' => './lib/Redis/Fast.xs', },
         include_dirs         => ['src', 'deps/hiredis'],
         extra_linker_flags   => ["deps/hiredis/libhiredis$Config{lib_ext}"],
-        $ENV{REDIS_DEBUG} ? ( extra_compiler_flags => [qw/-DDEBUG/] ) : (),
 
         test_requires => {
             "Digest::SHA"           => "0",

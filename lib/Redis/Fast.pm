@@ -138,8 +138,6 @@ sub new {
   my %args  = @_;
   my $self  = $class->_new;
 
-  #$self->{debug} = $args{debug} || $ENV{REDIS_DEBUG};
-
   ## Deal with REDIS_SERVER ENV
   if ($ENV{REDIS_SERVER} && !$args{sock} && !$args{server}) {
     if ($ENV{REDIS_SERVER} =~ m!^/!) {
@@ -236,6 +234,7 @@ sub new {
   #$self->{subscribers}   = {};
   $self->__set_reconnect($args{reconnect} || 0);
   $self->__set_every($args{every} || 1000);
+  $self->__set_debug(($args{debug} || $ENV{REDIS_DEBUG}) ? 1 : 0);
   $self->__set_cnx_timeout($args{cnx_timeout} || -1);
   $self->__set_read_timeout($args{read_timeout} || -1);
   $self->__set_write_timeout($args{write_timeout} || -1);
