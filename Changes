@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.27 2020-08-08T22:45:05Z
     - bump up hiredis v1.0.0
     - add debug option
 
