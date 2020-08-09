@@ -83,7 +83,7 @@ jobs:
           cpanm --quiet --with-develop --installdeps --notest .
 
       - name: Test
-        run: minil test
+        run: minil test --norelease --noauthor --noautomated
 
   test-macOS:
     runs-on: macOS-latest
@@ -134,4 +134,4 @@ jobs:
           cpanm --quiet --with-develop --installdeps --notest .
 
       - name: Test
-        run: minil test
+        run: minil test --norelease --noauthor --noautomated
