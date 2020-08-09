@@ -6,6 +6,47 @@ on:
       - "master"
 
 jobs:
+  test-xt:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.32"
+
+      - name: Set up Redis
+        uses: shogo82148/actions-setup-redis@v1
+        with:
+          redis-version: "6.0"
+          auto-start: false
+
+      - name: Cache CPAN modules
+        uses: actions/cache@v2
+        with:
+          path: |
+            local
+          key: ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}-xt
+          restore-keys: |
+            ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}-xt
+            ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
+            ${{ runner.os }}-perl-${{ matrix.perl }}-
+
+      - name: Install
+        run: |
+          git submodule init
+          git submodule update --recursive
+          cpanm -L local --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
+          cpanm -L local --quiet --with-develop --installdeps --notest .
+          echo "::set-env name=PERL5LIB::$(pwd)/local/lib/perl5"
+          echo "::add-path::$(pwd)/local/bin"
+
+      - name: Test
+        run: minil test --all
+
   test-ubuntu:
     runs-on: ubuntu-latest
     strategy:
@@ -47,15 +88,27 @@ jobs:
           redis-version: ${{ matrix.redis }}
           auto-start: false
 
+      - name: Cache CPAN modules
+        uses: actions/cache@v2
+        with:
+          path: |
+            local
+          key: ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
+          restore-keys: |
+            ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
+            ${{ runner.os }}-perl-${{ matrix.perl }}-
+
       - name: Install
         run: |
           git submodule init
           git submodule update --recursive
-          cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
-          cpanm --quiet --with-develop --installdeps --notest .
+          cpanm -L local --notest Minilla
+          cpanm -L local --quiet --with-develop --installdeps --notest .
+          echo "::set-env name=PERL5LIB::$(pwd)/local/lib/perl5"
+          echo "::add-path::$(pwd)/local/bin"
 
       - name: Test
-        run: minil test --all
+        run: minil test --norelease --noauthor --noautomated
 
   test-macOS:
     runs-on: macOS-latest
@@ -98,15 +151,27 @@ jobs:
           redis-version: ${{ matrix.redis }}
           auto-start: false
 
+      - name: Cache CPAN modules
+        uses: actions/cache@v2
+        with:
+          path: |
+            local
+          key: ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
+          restore-keys: |
+            ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
+            ${{ runner.os }}-perl-${{ matrix.perl }}-
+
       - name: Install
         run: |
           git submodule init
           git submodule update --recursive
-          cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
-          cpanm --quiet --with-develop --installdeps --notest .
+          cpanm -L local --notest Minilla
+          cpanm -L local --quiet --with-develop --installdeps --notest .
+          echo "::set-env name=PERL5LIB::$(pwd)/local/lib/perl5"
+          echo "::add-path::$(pwd)/local/bin"
 
       - name: Test
-        run: minil test --all
+        run: minil test --norelease --noauthor --noautomated
 
   test-windows:
     runs-on: windows-latest
