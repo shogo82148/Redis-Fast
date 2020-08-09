@@ -107,3 +107,41 @@ jobs:
 
       - name: Test
         run: minil test --all
+
+  test-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        perl:
+          - "5.32"
+          - "5.30"
+          - "5.28"
+          - "5.26"
+          - "5.24"
+          - "5.22"
+          - "5.20"
+          - "5.18"
+          - "5.16"
+          - "5.14"
+          - "5.12"
+          - "5.10"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Perl ${{ matrix.perl }}
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: ${{ matrix.perl }}
+
+      - name: Install
+        run: |
+          git submodule init
+          git submodule update --recursive
+          cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
+          cpanm --quiet --with-develop --installdeps --notest .
+
+      - name: Test
+        run: minil test --all

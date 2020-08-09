@@ -6,12 +6,13 @@
 #include "hiredis.h"
 #include "async.h"
 
+// a compatible layer of <poll.h>, <sys/socket.h>, etc. from hiredis
+#include "sockcompat.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-#include <poll.h>
-#include <sys/socket.h>
 
 #define MAX_ERROR_SIZE 256
 
