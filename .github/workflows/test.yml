@@ -6,6 +6,34 @@ on:
       - "master"
 
 jobs:
+  test-xt:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.32"
+
+      - name: Set up Redis
+        uses: shogo82148/actions-setup-redis@v1
+        with:
+          redis-version: "6.0"
+          auto-start: false
+
+      - name: Install
+        run: |
+          git submodule init
+          git submodule update --recursive
+          cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
+          cpanm --quiet --with-develop --installdeps --notest .
+
+      - name: Test
+        run: minil test --all
+
   test-ubuntu:
     runs-on: ubuntu-latest
     strategy:
@@ -51,11 +79,11 @@ jobs:
         run: |
           git submodule init
           git submodule update --recursive
-          cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
+          cpanm --notest Minilla
           cpanm --quiet --with-develop --installdeps --notest .
 
       - name: Test
-        run: minil test --all
+        run: minil test
 
   test-macOS:
     runs-on: macOS-latest
@@ -102,8 +130,8 @@ jobs:
         run: |
           git submodule init
           git submodule update --recursive
-          cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
+          cpanm --notest Minilla
           cpanm --quiet --with-develop --installdeps --notest .
 
       - name: Test
-        run: minil test --all
+        run: minil test
