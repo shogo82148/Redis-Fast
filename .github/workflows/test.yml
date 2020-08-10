@@ -210,4 +210,4 @@ jobs:
           cpanm --quiet --with-develop --installdeps --notest .
 
       - name: Test
-        run: minil test --all
+        run: minil test --norelease --noauthor --noautomated
