@@ -206,7 +206,7 @@ jobs:
         run: |
           git submodule init
           git submodule update --recursive
-          cpanm --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
+          cpanm --notest Minilla
           cpanm --quiet --with-develop --installdeps --notest .
 
       - name: Test
