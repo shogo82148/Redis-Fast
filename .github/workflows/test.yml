@@ -41,11 +41,12 @@ jobs:
           git submodule update --recursive
           cpanm -L local --notest Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
           cpanm -L local --quiet --with-develop --installdeps --notest .
-          echo "::set-env name=PERL5LIB::$(pwd)/local/lib/perl5"
-          echo "::add-path::$(pwd)/local/bin"
+          echo "PERL5LIB=$(pwd)/local/lib/perl5" >> "$GITHUB_ENV"
+          echo "$(pwd)/local/bin" >> "$GITHUB_PATH"
 
       - name: Test
-        run: minil test --all
+        run: |
+          minil test --all
 
   test-ubuntu:
     runs-on: ubuntu-latest
@@ -104,11 +105,12 @@ jobs:
           git submodule update --recursive
           cpanm -L local --notest Minilla
           cpanm -L local --quiet --with-develop --installdeps --notest .
-          echo "::set-env name=PERL5LIB::$(pwd)/local/lib/perl5"
-          echo "::add-path::$(pwd)/local/bin"
+          echo "PERL5LIB=$(pwd)/local/lib/perl5" >> "$GITHUB_ENV"
+          echo "$(pwd)/local/bin" >> "$GITHUB_PATH"
 
       - name: Test
-        run: minil test --norelease --noauthor --noautomated
+        run: |
+          minil test --norelease --noauthor --noautomated
 
   test-macOS:
     runs-on: macOS-latest
@@ -167,8 +169,9 @@ jobs:
           git submodule update --recursive
           cpanm -L local --notest Minilla
           cpanm -L local --quiet --with-develop --installdeps --notest .
-          echo "::set-env name=PERL5LIB::$(pwd)/local/lib/perl5"
-          echo "::add-path::$(pwd)/local/bin"
+          echo "PERL5LIB=$(pwd)/local/lib/perl5" >> "$GITHUB_ENV"
+          echo "$(pwd)/local/bin" >> "$GITHUB_PATH"
 
       - name: Test
-        run: minil test --norelease --noauthor --noautomated
+        run: |
+          minil test --norelease --noauthor --noautomated
