@@ -211,6 +211,16 @@ jobs:
           perl-version: ${{ matrix.perl }}
           distribution: strawberry
 
+      - name: Cache CPAN modules
+        uses: actions/cache@v2
+        with:
+          path: |
+            local
+          key: ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
+          restore-keys: |
+            ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
+            ${{ runner.os }}-perl-${{ matrix.perl }}-
+
       - name: Install
         run: |
           git submodule init
