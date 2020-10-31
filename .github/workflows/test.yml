@@ -215,9 +215,19 @@ jobs:
         run: |
           git submodule init
           git submodule update --recursive
-          cpanm --notest Minilla
-          cpanm --quiet --with-develop --installdeps --notest .
+
+          # install latest version of ExtUtils::MakeMaker
+          # cpm sometimes fails with the following error
+          # Pod-Simple-3.41| ExtUtils::MakeMaker version 6.64 required--this is only version 6.6302
+          cpanm ExtUtils::MakeMaker
+
+          cpm install -L local --show-build-log-on-failure Minilla
+          cpm install -L local --show-build-log-on-failure --with-develop
+          echo "PERL5LIB=$(pwd)/local/lib/perl5" >> "$GITHUB_ENV"
+          echo "$(pwd)/local/bin" >> "$GITHUB_PATH"
+        shell: bash
 
       - name: Test
         run: |
           minil test --norelease --noauthor --noautomated
+        shell: bash
