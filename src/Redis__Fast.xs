@@ -38,7 +38,7 @@ typedef struct redis_fast_s {
     int port;
     char* path;
     char* error;
-    int reconnect;
+    double reconnect;
     int every;
     int debug;
     double cnx_timeout;
@@ -401,7 +401,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
         }
         gettimeofday(&end, NULL);
         elapsed_time = (end.tv_sec-start.tv_sec) + 1E-6 * (end.tv_usec-start.tv_usec);
-        DEBUG_MSG("elasped time:%f, reconnect:%d", elapsed_time, self->reconnect);
+        DEBUG_MSG("elasped time:%f, reconnect:%lf", elapsed_time, self->reconnect);
         if( elapsed_time > self->reconnect) {
             if(self->path) {
                 snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s", self->path);
@@ -420,7 +420,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
 
 static void Redis__Fast_reconnect(Redis__Fast self) {
     DEBUG_MSG("%s", "start");
-    if(self->is_connected && !self->ac && self->reconnect) {
+    if(self->is_connected && !self->ac && self->reconnect > 0) {
         DEBUG_MSG("%s", "connection not found. reconnect");
         Redis__Fast_connect(self);
     }
@@ -779,7 +779,7 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
                 );
             DEBUG_MSG("%s", "waiting response");
             res = _wait_all_responses(self);
-            if(res == WAIT_FOR_EVENT_OK && !self->need_reconnect) {
+            if(res == WAIT_FOR_EVENT_OK && self->need_reconnect == 0) {
                 int _need_reconnect = 0;
                 if (1 < cnt - i) {
                     _need_reconnect = Redis__Fast_call_reconnect_on_error(
@@ -896,8 +896,8 @@ CODE:
 OUTPUT:
     RETVAL
 
-int
-__set_reconnect(Redis::Fast self, int val)
+double
+__set_reconnect(Redis::Fast self, double val)
 CODE:
 {
     RETVAL = self->reconnect = val;
@@ -906,7 +906,7 @@ OUTPUT:
     RETVAL
 
 
-int
+double
 __get_reconnect(Redis::Fast self)
 CODE:
 {
