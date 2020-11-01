@@ -569,7 +569,6 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
 
         {
             redis_fast_reply_t result;
-            SV* sv_undef;
 
             dSP;
 
@@ -582,9 +581,8 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
                 result = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
             }
 
-            sv_undef = sv_2mortal(newSV(0));
-            if(result.result == NULL) result.result = sv_undef;
-            if(result.error == NULL) result.error = sv_undef;
+            if(result.result == NULL) result.result = &PL_sv_undef;
+            if(result.error == NULL) result.error = &PL_sv_undef;
 
             PUSHMARK(SP);
             XPUSHs(result.result);
@@ -627,7 +625,6 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_subscribe_cb_t *cbt = (redis_fast_subscribe_cb_t*)privdata;
     redisReply* r = (redisReply*)reply;
-    SV* sv_undef;
 
     DEBUG_MSG("%s", "start");
     if(!cbt) {
@@ -660,9 +657,8 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
             self->proccess_sub_count++;
         }
 
-        sv_undef = sv_2mortal(newSV(0));
-        if(res.result == NULL) res.result = sv_undef;
-        if(res.error == NULL) res.error = sv_undef;
+        if(res.result == NULL) res.result = &PL_sv_undef;
+        if(res.error == NULL) res.error = &PL_sv_undef;
 
         PUSHMARK(SP);
         XPUSHs(res.result);
