@@ -85,14 +85,9 @@ no_leaks_ok {
     eval { $r->wait_all_responses };
 } 'async reconnect_on_error';
 
-my $info;
 no_leaks_ok {
-    my $r = Redis::Fast->new(server => $srv, debug => 1);
-    $info = $r->info();
+    my $r = Redis::Fast->new(server => $srv);
+    $r->info();
 } 'info';
-
-    for my $key(sort keys %$info) {
-        diag "$key = $info->{$key}";
-    }
 
 done_testing;
