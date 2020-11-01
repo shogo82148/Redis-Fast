@@ -446,7 +446,7 @@ static redis_fast_reply_t Redis__Fast_decode_reply(Redis__Fast self, redisReply*
         res.result = sv_2mortal(newSViv(reply->integer));
         break;
     case REDIS_REPLY_NIL:
-        res.result = sv_2mortal(newSV(0));
+        res.result = &PL_sv_undef;
         break;
 
     case REDIS_REPLY_ARRAY: {
@@ -511,7 +511,7 @@ static int Redis__Fast_call_reconnect_on_error(Redis__Fast self, redis_fast_repl
         ENTER;
         SAVETMPS;
 
-        sv_ret = ret.result ? ret.result : sv_2mortal(newSV(0));
+        sv_ret = ret.result ? ret.result : &PL_sv_undef;
         sv_err = ret.error;
         sv_cmd = sv_2mortal(newSVpvn((const char*)command_name, command_length));
 
@@ -550,7 +550,7 @@ static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* p
             cbt->ret = Redis__Fast_decode_reply(self, (redisReply*)reply, cbt->collect_errors);
         }
     } else if(c->c.flags & REDIS_FREEING) {
-        DEBUG_MSG("%s", "redis feeing");
+        DEBUG_MSG("%s", "redis freeing");
         Safefree(cbt);
     } else {
         DEBUG_MSG("connect error: %s", c->errstr);
@@ -797,7 +797,10 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
             if( res == WAIT_FOR_EVENT_READ_TIMEOUT ) break;
 
             if(self->flags & (FLAG_INSIDE_TRANSACTION | FLAG_INSIDE_WATCH)) {
-                croak("reconnect disabled inside transaction or watch");
+                char *msg = "reconnect disabled inside transaction or watch";
+                DEBUG_MSG("error: %s", msg);
+                ret.error = sv_2mortal(newSVpvn(msg, strlen(msg)));
+                return ret;
             }
 
             Redis__Fast_reconnect(self);
@@ -809,10 +812,15 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
         if(res == WAIT_FOR_EVENT_READ_TIMEOUT || res == WAIT_FOR_EVENT_WRITE_TIMEOUT) {
             snprintf(self->error, MAX_ERROR_SIZE, "Error while reading from Redis server: %s", strerror(EAGAIN));
             errno = EAGAIN;
-            croak("%s", self->error);
+            DEBUG_MSG("error: %s", self->error);
+            ret.error = sv_2mortal(newSVpvn(self->error, strlen(self->error)));
+            return ret;
         }
         if(!self->ac) {
-            croak("Not connected to any server");
+            char *msg = "Not connected to any server";
+            DEBUG_MSG("error: %s", msg);
+            ret.error = sv_2mortal(newSVpvn(msg, strlen(msg)));
+            return ret;
         }
     }
     DEBUG_MSG("Finish %s", argv[0]);
@@ -1289,8 +1297,8 @@ CODE:
     Safefree(argv);
     Safefree(argvlen);
 
-    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
-    ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
+    ST(0) = ret.result ? ret.result : &PL_sv_undef;
+    ST(1) = ret.error ? ret.error : &PL_sv_undef;
     XSRETURN(2);
 }
 
@@ -1367,8 +1375,8 @@ CODE:
     Safefree(argv);
     Safefree(argvlen);
 
-    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
-    ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
+    ST(0) = ret.result ? ret.result : &PL_sv_undef;
+    ST(1) = ret.error ? ret.error : &PL_sv_undef;
     XSRETURN(2);
 }
 
@@ -1407,8 +1415,8 @@ CODE:
     Safefree(argv);
     Safefree(argvlen);
 
-    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
-    ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
+    ST(0) = ret.result ? ret.result : &PL_sv_undef;
+    ST(1) = ret.error ? ret.error : &PL_sv_undef;
     XSRETURN(2);
 }
 
