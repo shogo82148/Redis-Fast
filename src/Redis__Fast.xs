@@ -797,7 +797,10 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
             if( res == WAIT_FOR_EVENT_READ_TIMEOUT ) break;
 
             if(self->flags & (FLAG_INSIDE_TRANSACTION | FLAG_INSIDE_WATCH)) {
-                croak("reconnect disabled inside transaction or watch");
+                char *msg = "reconnect disabled inside transaction or watch";
+                DEBUG_MSG("error: %s", msg);
+                ret.error = sv_2mortal(newSVpvn(msg, strlen(msg)));
+                return ret;
             }
 
             Redis__Fast_reconnect(self);
@@ -809,10 +812,15 @@ static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_err
         if(res == WAIT_FOR_EVENT_READ_TIMEOUT || res == WAIT_FOR_EVENT_WRITE_TIMEOUT) {
             snprintf(self->error, MAX_ERROR_SIZE, "Error while reading from Redis server: %s", strerror(EAGAIN));
             errno = EAGAIN;
-            croak("%s", self->error);
+            DEBUG_MSG("error: %s", self->error);
+            ret.error = sv_2mortal(newSVpvn(self->error, strlen(self->error)));
+            return ret;
         }
         if(!self->ac) {
-            croak("Not connected to any server");
+            char *msg = "Not connected to any server";
+            DEBUG_MSG("error: %s", msg);
+            ret.error = sv_2mortal(newSVpvn(msg, strlen(msg)));
+            return ret;
         }
     }
     DEBUG_MSG("Finish %s", argv[0]);
