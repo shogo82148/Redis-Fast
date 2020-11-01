@@ -85,4 +85,9 @@ no_leaks_ok {
     eval { $r->wait_all_responses };
 } 'async reconnect_on_error';
 
+no_leaks_ok {
+    my $r = Redis::Fast->new(server => $srv);
+    $r->info();
+} 'info';
+
 done_testing;

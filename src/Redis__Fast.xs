@@ -834,10 +834,10 @@ static redis_fast_reply_t Redis__Fast_info_custom_decode(Redis__Fast self, redis
     if(reply->type == REDIS_REPLY_STRING ||
        reply->type == REDIS_REPLY_STATUS) {
 
-        HV* hv = (HV*)sv_2mortal((SV*)newHV());
+        HV* hv = newHV();
         char* str = reply->str;
         size_t len = reply->len;
-        res.result = newRV_inc((SV*)hv);
+        res.result = sv_2mortal(newRV_noinc((SV*)hv));
 
         while(len != 0) {
             const char* line = (char*)memchr(str, '\r', len);
@@ -854,8 +854,8 @@ static redis_fast_reply_t Redis__Fast_info_custom_decode(Redis__Fast self, redis
                 SV** ret;
                 size_t keylen;
                 keylen = sep - str;
-                val = newSVpvn(sep + 1, linelen - keylen - 1);
-                ret = hv_store(hv, str, keylen, val, 0);
+                val = sv_2mortal(newSVpvn(sep + 1, linelen - keylen - 1));
+                ret = hv_store(hv, str, keylen, SvREFCNT_inc(val), 0);
                 if (ret == NULL) {
                     SvREFCNT_dec(val);
                     croak("failed to hv_store");
