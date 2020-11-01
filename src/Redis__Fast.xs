@@ -446,7 +446,7 @@ static redis_fast_reply_t Redis__Fast_decode_reply(Redis__Fast self, redisReply*
         res.result = sv_2mortal(newSViv(reply->integer));
         break;
     case REDIS_REPLY_NIL:
-        res.result = sv_2mortal(newSV(0));
+        res.result = &PL_sv_undef;
         break;
 
     case REDIS_REPLY_ARRAY: {
@@ -511,7 +511,7 @@ static int Redis__Fast_call_reconnect_on_error(Redis__Fast self, redis_fast_repl
         ENTER;
         SAVETMPS;
 
-        sv_ret = ret.result ? ret.result : sv_2mortal(newSV(0));
+        sv_ret = ret.result ? ret.result : &PL_sv_undef;
         sv_err = ret.error;
         sv_cmd = sv_2mortal(newSVpvn((const char*)command_name, command_length));
 
@@ -1289,8 +1289,8 @@ CODE:
     Safefree(argv);
     Safefree(argvlen);
 
-    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
-    ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
+    ST(0) = ret.result ? ret.result : &PL_sv_undef;
+    ST(1) = ret.error ? ret.error : &PL_sv_undef;
     XSRETURN(2);
 }
 
@@ -1367,8 +1367,8 @@ CODE:
     Safefree(argv);
     Safefree(argvlen);
 
-    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
-    ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
+    ST(0) = ret.result ? ret.result : &PL_sv_undef;
+    ST(1) = ret.error ? ret.error : &PL_sv_undef;
     XSRETURN(2);
 }
 
@@ -1407,8 +1407,8 @@ CODE:
     Safefree(argv);
     Safefree(argvlen);
 
-    ST(0) = ret.result ? ret.result : sv_2mortal(newSV(0));
-    ST(1) = ret.error ? ret.error : sv_2mortal(newSV(0));
+    ST(0) = ret.result ? ret.result : &PL_sv_undef;
+    ST(1) = ret.error ? ret.error : &PL_sv_undef;
     XSRETURN(2);
 }
 
