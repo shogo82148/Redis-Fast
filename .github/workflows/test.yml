@@ -238,11 +238,9 @@ jobs:
 
           cpm install -L local --show-build-log-on-failure Minilla
           cpm install -L local --show-build-log-on-failure --with-develop
-          echo "PERL5LIB=$(pwd)/local/lib/perl5" >> "$GITHUB_ENV"
-          echo "$(pwd)/local/bin" >> "$GITHUB_PATH"
-        shell: bash
+          Write-Output "PERL5LIB=$(Join-Path $(Get-Location) local lib perl5)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Join-Path $(Get-Location) local bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Test
         run: |
           minil test --norelease --noauthor --noautomated
-        shell: bash
