@@ -83,15 +83,15 @@ sub EXTEND {
 
 sub DESTROY { $_[0]->quit }
 
-1;    ## End of Redis::List
+1;    ## End of Redis::Fast::List
 
 =head1 NAME
 
-    Redis::List - tie Perl arrays to Redis lists
+    Redis::Fast::List - tie Perl arrays to Redis lists
 
 =head1 SYNOPSYS
 
-    tie @my_list, 'Redis::List', 'list_name', @Redis_new_parameters;
+    tie @my_list, 'Redis::Fast::List', 'list_name', @Redis_new_parameters;
 
     $value = $my_list[$index];
     $my_list[$index] = $value;
