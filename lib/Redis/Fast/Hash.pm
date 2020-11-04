@@ -65,19 +65,19 @@ sub CLEAR {
 }
 
 
-1;    ## End of Redis::Hash
+1;    ## End of Redis::Fast::Hash
 
 =head1 NAME
 
-    Redis::Hash - tie Perl hashes to Redis hashes
+    Redis::Fast::Hash - tie Perl hashes to Redis hashes
 
 =head1 SYNOPSYS
 
     ## Create fake hash using keys like 'hash_prefix:KEY'
-    tie %my_hash, 'Redis::Hash', 'hash_prefix', @Redis_new_parameters;
+    tie %my_hash, 'Redis::Fast::Hash', 'hash_prefix', @Redis_new_parameters;
 
     ## Treat the entire Redis database as a hash
-    tie %my_hash, 'Redis::Hash', undef, @Redis_new_parameters;
+    tie %my_hash, 'Redis::Fast::Hash', undef, @Redis_new_parameters;
 
     $value = $my_hash{$key};
     $my_hash{$key} = $value;
@@ -92,7 +92,7 @@ sub CLEAR {
 
 =head1 DESCRIPTION
 
-Ties a Perl hash to Redis. Note that it doesn't use Redis Hashes, but
+Ties a Perl hash to Redis::Fast. Note that it doesn't use Redis Hashes, but
 implements a fake hash using regular keys like "prefix:KEY".
 
 If no C<prefix> is given, it will tie the entire Redis database as a hash.
