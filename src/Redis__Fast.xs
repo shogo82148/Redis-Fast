@@ -265,7 +265,6 @@ static void Redis__Fast_disconnect_cb(redisAsyncContext* c, int status) {
     Redis__Fast self = (Redis__Fast)c->data;
     PERL_UNUSED_VAR(status);
     DEBUG_MSG("disconnected status = %d", status);
-    self->ac = NULL;
 }
 
 static redisAsyncContext* __build_sock(Redis__Fast self)
