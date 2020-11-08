@@ -231,12 +231,8 @@ jobs:
           git submodule init
           git submodule update --recursive
 
-          # install latest version of ExtUtils::MakeMaker
-          # cpm sometimes fails with the following error
-          # Pod-Simple-3.41| ExtUtils::MakeMaker version 6.64 required--this is only version 6.6302
-          cpanm ExtUtils::MakeMaker
-
-          cpm install -L local --show-build-log-on-failure Minilla
+          # Minilla requires Win32::Console::ANSI on Windows
+          cpm install -L local --show-build-log-on-failure Minilla Win32::Console::ANSI
           cpm install -L local --show-build-log-on-failure --with-develop
           Write-Output "PERL5LIB=$(Join-Path $(Get-Location) local lib perl5)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Join-Path $(Get-Location) local bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
