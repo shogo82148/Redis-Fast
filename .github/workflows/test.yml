@@ -7,7 +7,7 @@ on:
 
 jobs:
   test-xt:
-    runs-on: ubuntu-latest
+    runs-on: s
 
     steps:
       - name: Checkout
@@ -48,8 +48,9 @@ jobs:
         run: |
           minil test --all
 
-  test-ubuntu:
-    runs-on: ubuntu-latest
+  test:
+    runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -73,6 +74,9 @@ jobs:
           - "3.2"
           - "3.0"
           - "2.8"
+        os:
+          - ubuntu-latest
+          - macos-latest
 
     steps:
       - name: Checkout
@@ -103,81 +107,6 @@ jobs:
         run: |
           git submodule init
           git submodule update --recursive
-
-          # install latest version of ExtUtils::MakeMaker
-          # cpm sometimes fails with the following error
-          # Pod-Simple-3.41| ExtUtils::MakeMaker version 6.64 required--this is only version 6.6302
-          cpanm ExtUtils::MakeMaker
-
-          cpm install -L local --show-build-log-on-failure Minilla
-          cpm install -L local --show-build-log-on-failure --with-develop
-          echo "PERL5LIB=$(pwd)/local/lib/perl5" >> "$GITHUB_ENV"
-          echo "$(pwd)/local/bin" >> "$GITHUB_PATH"
-
-      - name: Test
-        run: |
-          minil test --norelease --noauthor --noautomated
-
-  test-macOS:
-    runs-on: macOS-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        perl:
-          - "5.32"
-          - "5.30"
-          - "5.28"
-          - "5.26"
-          - "5.24"
-          - "5.22"
-          - "5.20"
-          - "5.18"
-          - "5.16"
-          - "5.14"
-          - "5.12"
-          - "5.10"
-        redis:
-          - "6.0"
-          - "5.0"
-          - "4.0"
-          - "3.2"
-          - "3.0"
-          - "2.8"
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Set up Perl ${{ matrix.perl }}
-        uses: shogo82148/actions-setup-perl@v1
-        with:
-          perl-version: ${{ matrix.perl }}
-
-      - name: Set up Redis ${{ matrix.redis }}
-        uses: shogo82148/actions-setup-redis@v1
-        with:
-          redis-version: ${{ matrix.redis }}
-          auto-start: false
-
-      - name: Cache CPAN modules
-        uses: actions/cache@v2
-        with:
-          path: |
-            local
-          key: ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
-          restore-keys: |
-            ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
-            ${{ runner.os }}-perl-${{ matrix.perl }}-
-
-      - name: Install
-        run: |
-          git submodule init
-          git submodule update --recursive
-
-          # install latest version of ExtUtils::MakeMaker
-          # cpm sometimes fails with the following error
-          # Pod-Simple-3.41| ExtUtils::MakeMaker version 6.64 required--this is only version 6.6302
-          cpanm ExtUtils::MakeMaker
 
           cpm install -L local --show-build-log-on-failure Minilla
           cpm install -L local --show-build-log-on-failure --with-develop
