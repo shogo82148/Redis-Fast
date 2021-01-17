@@ -2,6 +2,10 @@ Revision history for Redis
 
 {{$NEXT}}
 
+0.29 2021-01-17T10:35:59Z
+    - fix Segmentation fault when connection failed #105
+    - fix pod of Redis::Fast::Hash and Redis::Fast::List #106
+
 0.28 2020-11-01T23:04:30Z
     - make the reconnect option double #101
     - fix memory leak of info command #102
