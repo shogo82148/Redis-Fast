@@ -48,35 +48,58 @@ jobs:
         run: |
           minil test --all
 
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: list
+        id: set-matrix
+        run: |
+          from __future__ import print_function
+          import json
+          perl = [
+              '5.32',
+              '5.30',
+              '5.28',
+              '5.26',
+              '5.24',
+              '5.22',
+              '5.20',
+              '5.18',
+              '5.16',
+              '5.14',
+              '5.12',
+              '5.10'
+          ]
+          redis = [
+              '6.0',
+              '5.0',
+              '4.0',
+              '3.2',
+              '3.0',
+              '2.8',
+          ]
+          includes = []
+          for r in redis:
+              includes.append({'perl': perl[0], 'redis': r, 'os': 'macos-latest'})
+          matrix = {
+              'perl': perl,
+              'redis': redis,
+              'os': ['ubuntu-latest'],
+              'include': includes
+          }
+          output = json.dumps(matrix, separators=(',', ':'))
+          print('::set-output name=matrix::{0}'.format(output))
+        shell: python
+
   test:
     runs-on: ${{ matrix.os }}
+    needs: list
 
     strategy:
       fail-fast: false
-      matrix:
-        perl:
-          - "5.32"
-          - "5.30"
-          - "5.28"
-          - "5.26"
-          - "5.24"
-          - "5.22"
-          - "5.20"
-          - "5.18"
-          - "5.16"
-          - "5.14"
-          - "5.12"
-          - "5.10"
-        redis:
-          - "6.0"
-          - "5.0"
-          - "4.0"
-          - "3.2"
-          - "3.0"
-          - "2.8"
-        os:
-          - ubuntu-latest
-          - macos-latest
+      matrix: ${{ fromJSON(needs.list.outputs.matrix) }}
 
     steps:
       - name: Checkout
