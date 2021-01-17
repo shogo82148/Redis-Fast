@@ -7,7 +7,7 @@ on:
 
 jobs:
   test-xt:
-    runs-on: s
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
