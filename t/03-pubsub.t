@@ -5,6 +5,7 @@ use strict;
 use Test::More;
 use Test::Fatal;
 use Test::Deep;
+use Test::SharedFork;
 use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer qw( redis reap );
@@ -210,7 +211,7 @@ subtest 'server is killed while waiting for subscribe' => sub {
     diag("now, check wait_for_messages(), should die...");
     like(
       exception { $sub->wait_for_messages(0) },
-      qr/EOF from server/,
+      qr/EOF from server|Not connected to any server/,
       "properly died with EOF"
     );
     exit(0);
