@@ -716,8 +716,6 @@ static void Redis__Fast_quit(Redis__Fast self) {
         if(cbt->ret.result || cbt->ret.error) Safefree(cbt);
     }
     DEBUG_MSG("%s", "finish");
-    redisAsyncFree(self->ac);
-    self->ac = NULL;
 }
 
 static redis_fast_reply_t  Redis__Fast_run_cmd(Redis__Fast self, int collect_errors, CUSTOM_DECODE custom_decode, SV* cb, int argc, const char** argv, size_t* argvlen) {
@@ -1340,8 +1338,6 @@ CODE:
         redisAsyncDisconnect(self->ac);
         _wait_all_responses(self);
         self->is_connected = 0;
-        redisAsyncFree(self->ac);
-        self->ac = NULL;
         ST(0) = sv_2mortal(newSViv(1));
         XSRETURN(1);
     } else {
