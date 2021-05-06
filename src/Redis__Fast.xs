@@ -329,12 +329,12 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
         if(res != WAIT_FOR_EVENT_OK) {
             DEBUG_MSG("error: %d", res);
             redisAsyncFree(self->ac);
+            _wait_all_responses(self);
 
             // set is_connected flag to reconnect.
             // see https://github.com/shogo82148/Redis-Fast/issues/73
             self->is_connected = 1;
 
-            self->ac = NULL;
             return NULL;
         }
     }
@@ -370,7 +370,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
 
     if (self->ac) {
         redisAsyncFree(self->ac);
-        self->ac = NULL;
+        _wait_all_responses(self);
     }
     self->flags = 0;
 
@@ -1127,7 +1127,7 @@ CODE:
     if (self->ac) {
         DEBUG_MSG("%s", "free ac");
         redisAsyncFree(self->ac);
-        self->ac = NULL;
+        _wait_all_responses(self);
     }
 
     if(self->hostname) {
