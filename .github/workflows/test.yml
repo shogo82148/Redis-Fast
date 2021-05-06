@@ -14,36 +14,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set up Perl
-        uses: shogo82148/actions-setup-perl@v1
+      - name: git submodule init
+        run: |
+          git submodule init
+          git submodule update --recursive
+
+      - name: Set up Perl ${{ matrix.perl }}
+        uses: shogo82148/actions-setup-perl@v1.12.0-rc1
         with:
           perl-version: "5.32"
+          install-modules-with: cpm
+          install-modules-args: --with-develop --with-configure
+          install-modules: |
+            Minilla
+            Test::CPAN::Meta
+            Test::Pod
+            Test::MinimumVersion::Fast
 
       - name: Set up Redis
         uses: shogo82148/actions-setup-redis@v1
         with:
           redis-version: "6.2"
           auto-start: false
-
-      - name: Cache CPAN modules
-        uses: actions/cache@v2
-        with:
-          path: |
-            local
-          key: ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}-xt
-          restore-keys: |
-            ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}-xt
-            ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
-            ${{ runner.os }}-perl-${{ matrix.perl }}-
-
-      - name: Install
-        run: |
-          git submodule init
-          git submodule update --recursive
-          cpm install -L local --show-build-log-on-failure Minilla Test::CPAN::Meta Test::Pod Test::MinimumVersion::Fast
-          cpm install -L local --show-build-log-on-failure --with-develop
-          echo "PERL5LIB=$(pwd)/local/lib/perl5" >> "$GITHUB_ENV"
-          echo "$(pwd)/local/bin" >> "$GITHUB_PATH"
 
       - name: Test
         run: |
@@ -107,36 +99,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: git submodule init
+        run: |
+          git submodule init
+          git submodule update --recursive
+
       - name: Set up Perl ${{ matrix.perl }}
-        uses: shogo82148/actions-setup-perl@v1
+        uses: shogo82148/actions-setup-perl@v1.12.0-rc1
         with:
           perl-version: ${{ matrix.perl }}
+          install-modules-with: cpm
+          install-modules-args: --with-develop --with-configure
+          install-modules: Minilla
 
       - name: Set up Redis ${{ matrix.redis }}
         uses: shogo82148/actions-setup-redis@v1
         with:
           redis-version: ${{ matrix.redis }}
           auto-start: false
-
-      - name: Cache CPAN modules
-        uses: actions/cache@v2
-        with:
-          path: |
-            local
-          key: ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
-          restore-keys: |
-            ${{ runner.os }}-perl-${{ matrix.perl }}-${{ hashFiles('**/cpanfile') }}
-            ${{ runner.os }}-perl-${{ matrix.perl }}-
-
-      - name: Install
-        run: |
-          git submodule init
-          git submodule update --recursive
-
-          cpm install -L local --show-build-log-on-failure Minilla
-          cpm install -L local --show-build-log-on-failure --with-develop
-          echo "PERL5LIB=$(pwd)/local/lib/perl5" >> "$GITHUB_ENV"
-          echo "$(pwd)/local/bin" >> "$GITHUB_PATH"
 
       - name: Test
         run: |
