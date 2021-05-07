@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.30 2021-05-07T13:06:59Z
     - fix broken tests using fork(2) #112
     - do not self->ac = NULL out of callback functions to avoid memory leak #111
 
