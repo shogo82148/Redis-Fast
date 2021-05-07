@@ -249,6 +249,21 @@ static int wait_for_event(Redis__Fast self, double read_timeout, double write_ti
     return WAIT_FOR_EVENT_OK;
 }
 
+
+static int _wait_all_responses(Redis__Fast self) {
+    DEBUG_MSG("%s", "start");
+    while(self->ac && self->ac->replies.tail) {
+        int res = wait_for_event(self, self->read_timeout, self->write_timeout);
+        if (res != WAIT_FOR_EVENT_OK) {
+            DEBUG_MSG("error: %d", res);
+            return res;
+        }
+    }
+    DEBUG_MSG("%s", "finish");
+    return WAIT_FOR_EVENT_OK;
+}
+
+
 static void Redis__Fast_connect_cb(redisAsyncContext* c, int status) {
     Redis__Fast self = (Redis__Fast)c->data;
     DEBUG_MSG("connected status = %d", status);
@@ -346,20 +361,6 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
 
     DEBUG_MSG("%s", "finsih");
     return self->ac;
-}
-
-
-static int _wait_all_responses(Redis__Fast self) {
-    DEBUG_MSG("%s", "start");
-    while(self->ac && self->ac->replies.tail) {
-        int res = wait_for_event(self, self->read_timeout, self->write_timeout);
-        if (res != WAIT_FOR_EVENT_OK) {
-            DEBUG_MSG("error: %d", res);
-            return res;
-        }
-    }
-    DEBUG_MSG("%s", "finish");
-    return WAIT_FOR_EVENT_OK;
 }
 
 
