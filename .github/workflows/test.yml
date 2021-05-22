@@ -20,9 +20,9 @@ jobs:
           git submodule update --recursive
 
       - name: Set up Perl ${{ matrix.perl }}
-        uses: shogo82148/actions-setup-perl@v1.12.0-rc1
+        uses: shogo82148/actions-setup-perl@v1
         with:
-          perl-version: "5.32"
+          perl-version: "5.34"
           install-modules-with: cpm
           install-modules-args: --with-develop --with-configure
           install-modules: |
@@ -52,6 +52,7 @@ jobs:
           from __future__ import print_function
           import json
           perl = [
+              '5.34',
               '5.32',
               '5.30',
               '5.28',
@@ -105,7 +106,7 @@ jobs:
           git submodule update --recursive
 
       - name: Set up Perl ${{ matrix.perl }}
-        uses: shogo82148/actions-setup-perl@v1.12.0-rc1
+        uses: shogo82148/actions-setup-perl@v1
         with:
           perl-version: ${{ matrix.perl }}
           install-modules-with: cpm
