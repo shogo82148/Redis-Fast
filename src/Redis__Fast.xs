@@ -567,6 +567,7 @@ static void Redis__Fast_sync_reply_cb(redisAsyncContext* c, void* reply, void* p
 static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* privdata) {
     Redis__Fast self = (Redis__Fast)c->data;
     redis_fast_async_cb_t *cbt = (redis_fast_async_cb_t*)privdata;
+    DEBUG_MSG("%p, %p", reply, privdata);
     if (reply) {
         self->flags = (self->flags | cbt->on_flags) & cbt->off_flags;
 
@@ -616,6 +617,41 @@ static void Redis__Fast_async_reply_cb(redisAsyncContext* c, void* reply, void* 
                     self, result, cbt->command_name, cbt->command_length
                 );
             }
+        }
+    } else {
+        if (c->c.flags & REDIS_FREEING) {
+             DEBUG_MSG("%s", "redis freeing");
+        } else {
+            DEBUG_MSG("connect error: %s", c->errstr);
+        }
+
+        {
+            redis_fast_reply_t result;
+            const char *msg;
+
+            dSP;
+
+            ENTER;
+            SAVETMPS;
+
+            result.result = &PL_sv_undef;
+            if (c->c.flags & REDIS_FREEING) {
+                msg = "redis freeing";
+            } else {
+                msg = c->errstr;
+            }
+            DEBUG_MSG("error: %s", msg);
+            result.error = sv_2mortal(newSVpvn(msg, strlen(msg)));
+
+            PUSHMARK(SP);
+            XPUSHs(result.result);
+            XPUSHs(result.error);
+            PUTBACK;
+
+            call_sv(cbt->cb, G_DISCARD);
+
+            FREETMPS;
+            LEAVE;
         }
     }
 
