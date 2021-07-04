@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.31 2021-07-04T06:50:31Z
     - call the callback sub when we get connection error, fixes #117 #118
 
 0.30 2021-05-07T13:06:59Z
