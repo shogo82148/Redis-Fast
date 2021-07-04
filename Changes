@@ -1,6 +1,7 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - call the callback sub when we get connection error, fixes #117 #118
 
 0.30 2021-05-07T13:06:59Z
     - fix broken tests using fork(2) #112
