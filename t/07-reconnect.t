@@ -31,16 +31,25 @@ subtest 'Command without connection or timeout, with database change, with recon
 };
 
 
-subtest 'Reconnection discards pending commands' => sub {
+subtest 'Pending commands fail on reconnection' => sub {
   ok(my $r = Redis::Fast->new(reconnect => 2, server => $srv), 'connected to our test redis-server');
 
-  my $processed_pending = 0;
-  $r->dbsize(sub { $processed_pending++ });
+  my $succeed_pending = 0;
+  my $failed_pending = 0;
+  $r->dbsize(sub {
+    my ($ret, $err) = @_;
+    if ($err) {
+      $failed_pending++;
+    } else {
+      $succeed_pending++;
+    }
+  });
 
   _wait_for_redis_timeout();
   ok($r->set(foo => 'bar'), 'send command with reconnect');
 
-  is($processed_pending, 0, 'pending command discarded on reconnect');
+  is($succeed_pending, 0, 'Pending commands does not succeed on reconnection');
+  is($failed_pending, 1, 'Pending commands fail on reconnection');
 };
 
 
