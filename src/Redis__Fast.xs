@@ -316,7 +316,7 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     }
     if(ac->err) {
         DEBUG_MSG("connection error: %s", ac->errstr);
-	redisAsyncFree(ac);
+        redisAsyncFree(ac);
         return NULL;
     }
     ac->data = (void*)self;
@@ -359,7 +359,7 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
         call_sv(self->on_connect, G_DISCARD | G_NOARGS);
     }
 
-    DEBUG_MSG("%s", "finsih");
+    DEBUG_MSG("%s", "finish");
     return self->ac;
 }
 
