@@ -376,8 +376,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
     self->pid = getpid();
 
     if(self->reconnect == 0) {
-        __build_sock(self);
-        if(!self->ac) {
+        if(! __build_sock(self)) {
             if(self->path) {
                 snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s", self->path);
             } else {
@@ -399,7 +398,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
         }
         gettimeofday(&end, NULL);
         elapsed_time = (end.tv_sec-start.tv_sec) + 1E-6 * (end.tv_usec-start.tv_usec);
-        DEBUG_MSG("elasped time:%f, reconnect:%lf", elapsed_time, self->reconnect);
+        DEBUG_MSG("elapsed time:%f, reconnect:%lf", elapsed_time, self->reconnect);
         if( elapsed_time > self->reconnect) {
             if(self->path) {
                 snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s", self->path);
