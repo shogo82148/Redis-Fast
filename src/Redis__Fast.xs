@@ -25,7 +25,7 @@
 
 #define DEBUG_MSG(fmt, ...) \
     if (self->debug) {                                                  \
-        fprintf(stderr, "[%s:%d:%s]: ", __FILE__, __LINE__, __func__);  \
+        fprintf(stderr, "[%d][%d][%s:%d:%s]: ", getpid(), getppid(), __FILE__, __LINE__, __func__);  \
         fprintf(stderr, fmt, __VA_ARGS__);                              \
         fprintf(stderr, "\n");                                          \
     }
