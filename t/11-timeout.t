@@ -57,5 +57,18 @@ subtest "server doesn't respond at connection (cnx_timeout)" => sub {
   }
 };
 
+subtest "server doesn't respond at connection with unreachable server (cnx_timeout)" => sub {
+    my $redis;
+    my $start_time = time;
+    isnt(
+         exception { $redis = Redis::Fast->new(server => '10.0.99.99:9998', cnx_timeout => 1); },
+         undef,
+         "the code died",
+        );
+    ok(time - $start_time >= 1, "gave up late enough");
+    ok(time - $start_time < 5, "gave up soon enough");
+    ok(!$redis, 'redis was not set');
+};
+
 done_testing;
 

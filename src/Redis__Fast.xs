@@ -25,7 +25,7 @@
 
 #define DEBUG_MSG(fmt, ...) \
     if (self->debug) {                                                  \
-        fprintf(stderr, "[%s:%d:%s]: ", __FILE__, __LINE__, __func__);  \
+        fprintf(stderr, "[%d][%d][%s:%d:%s]: ", getpid(), getppid(), __FILE__, __LINE__, __func__);  \
         fprintf(stderr, fmt, __VA_ARGS__);                              \
         fprintf(stderr, "\n");                                          \
     }
@@ -316,7 +316,6 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
     }
     if(ac->err) {
         DEBUG_MSG("connection error: %s", ac->errstr);
-	redisAsyncFree(ac);
         return NULL;
     }
     ac->data = (void*)self;
@@ -343,7 +342,6 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
         }
         if(res != WAIT_FOR_EVENT_OK) {
             DEBUG_MSG("error: %d", res);
-            redisAsyncFree(self->ac);
             _wait_all_responses(self);
 
             // set is_connected flag to reconnect.
@@ -359,7 +357,7 @@ static redisAsyncContext* __build_sock(Redis__Fast self)
         call_sv(self->on_connect, G_DISCARD | G_NOARGS);
     }
 
-    DEBUG_MSG("%s", "finsih");
+    DEBUG_MSG("%s", "finish");
     return self->ac;
 }
 
@@ -370,7 +368,6 @@ static void Redis__Fast_connect(Redis__Fast self) {
     DEBUG_MSG("%s", "start");
 
     if (self->ac) {
-        redisAsyncFree(self->ac);
         _wait_all_responses(self);
     }
     self->flags = 0;
@@ -379,8 +376,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
     self->pid = getpid();
 
     if(self->reconnect == 0) {
-        __build_sock(self);
-        if(!self->ac) {
+        if(! __build_sock(self)) {
             if(self->path) {
                 snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s", self->path);
             } else {
@@ -402,7 +398,7 @@ static void Redis__Fast_connect(Redis__Fast self) {
         }
         gettimeofday(&end, NULL);
         elapsed_time = (end.tv_sec-start.tv_sec) + 1E-6 * (end.tv_usec-start.tv_usec);
-        DEBUG_MSG("elasped time:%f, reconnect:%lf", elapsed_time, self->reconnect);
+        DEBUG_MSG("elapsed time:%f, reconnect:%lf", elapsed_time, self->reconnect);
         if( elapsed_time > self->reconnect) {
             if(self->path) {
                 snprintf(self->error, MAX_ERROR_SIZE, "Could not connect to Redis server at %s", self->path);
