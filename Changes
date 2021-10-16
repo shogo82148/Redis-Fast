@@ -1,6 +1,7 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - Fixing segmentation faults when trying to connecting to unreachable hosts #120 (thanks @pepl)
 
 0.31 2021-07-04T06:50:31Z
     - call the callback sub when we get connection error, fixes #117 #118
