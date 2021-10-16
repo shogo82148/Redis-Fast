@@ -60,8 +60,13 @@ subtest "server doesn't respond at connection (cnx_timeout)" => sub {
 subtest "server doesn't respond at connection with unreachable server (cnx_timeout)" => sub {
     my $redis;
     my $start_time = time;
+
+    # $server is one of example IP addresses.
+    # it is reserved for documentation, so unreachable.
+    my $server = "192.0.2.1:9998";
+
     isnt(
-         exception { $redis = Redis::Fast->new(server => '10.0.99.99:9998', cnx_timeout => 1); },
+         exception { $redis = Redis::Fast->new(server => $server, cnx_timeout => 1); },
          undef,
          "the code died",
         );
