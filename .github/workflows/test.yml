@@ -122,3 +122,5 @@ jobs:
       - name: Test
         run: |
           minil test --norelease --noauthor --noautomated
+        env:
+          REDIS_DEBUG: "1"
