@@ -121,7 +121,8 @@ jobs:
 
       - name: Test
         run: |
-          cat /home/runner/work/Redis-Fast/Redis-Fast/local/lib/perl5/URI/Escape.pm
+          cat -n /home/runner/work/Redis-Fast/Redis-Fast/local/lib/perl5/URI.pm
+          cat -n /home/runner/work/Redis-Fast/Redis-Fast/local/lib/perl5/URI/Escape.pm
           minil test --norelease --noauthor --noautomated
         env:
           REDIS_DEBUG: "1"
