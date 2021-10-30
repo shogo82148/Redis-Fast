@@ -111,7 +111,9 @@ jobs:
           perl-version: ${{ matrix.perl }}
           install-modules-with: cpm
           install-modules-args: --with-develop --with-configure
-          install-modules: Minilla
+          # xxx: we not depend URI directly, however install it explicitly.
+          # because cpm sometimes installs old version of URI.
+          install-modules: Minilla URI
 
       - name: Set up Redis ${{ matrix.redis }}
         uses: shogo82148/actions-setup-redis@v1
