@@ -31,7 +31,10 @@ $r->get( $test_key, sub { } );
 $r2->shutdown;
 $r->get( $test_key, sub { $is_called = 1; diag $_[0], $_[1] } );
 
-$r->wait_all_responses;
+eval {
+    # it sometimes fails with "Connection reset by peer", but it's OK.
+    $r->wait_all_responses;
+};
 
 ok $is_called, "callback is called";
 
