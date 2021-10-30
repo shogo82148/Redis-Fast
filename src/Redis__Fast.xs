@@ -1208,8 +1208,8 @@ CODE:
         self->reconnect_on_error = NULL;
     }
 
-    Safefree(self);
     DEBUG_MSG("%s", "finish");
+    Safefree(self);
 }
 
 
