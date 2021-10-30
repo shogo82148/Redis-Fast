@@ -47,7 +47,7 @@
       },
       "runtime" : {
          "requires" : {
-            "Time::HiRes" : "0",
+            "Time::HiRes" : "1.77",
             "Try::Tiny" : "0",
             "perl" : "5.008001"
          }
@@ -79,7 +79,7 @@
          "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
-   "version" : "0.32",
+   "version" : "0.33",
    "x_contributors" : [
       "Aaron Crane <arc@aaroncrane.co.uk>",
       "Aaron Crane <arc@cpan.org>",

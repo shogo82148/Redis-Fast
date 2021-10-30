@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.33 2021-10-30T11:29:40Z
     - fix Undefined Behavior in DESTROY, closes #125
     - use monotonic times in tests
     - supress "Connection reset by peer", closes #124

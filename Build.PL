@@ -23,7 +23,7 @@ my %args = (
     },
 
     requires => {
-        'Time::HiRes' => '0',
+        'Time::HiRes' => '1.77',
         'Try::Tiny' => '0',
         'perl' => '5.008001',
     },
