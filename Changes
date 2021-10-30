@@ -1,8 +1,9 @@
 Revision history for Redis
 
 {{$NEXT}}
-    - fix Undefined Behavior in DESTROY , closes #125
+    - fix Undefined Behavior in DESTROY, closes #125
     - use monotonic times in tests
+    - supress "Connection reset by peer", closes #124
 
 0.32 2021-10-16T06:06:31Z
     - Fixing segmentation faults when trying to connecting to unreachable hosts #120 (thanks @pepl)
