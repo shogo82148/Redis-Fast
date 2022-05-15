@@ -4,7 +4,7 @@
       "Ichinose Shogo <shogo82148@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v3.1.12, CPAN::Meta::Converter version 2.150010",
+   "generated_by" : "Minilla/v3.1.18, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "perl_5"
    ],
@@ -75,7 +75,7 @@
       "homepage" : "https://github.com/shogo82148/Redis-Fast",
       "repository" : {
          "type" : "git",
-         "url" : "git://github.com/shogo82148/Redis-Fast.git",
+         "url" : "https://github.com/shogo82148/Redis-Fast.git",
          "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
@@ -116,6 +116,7 @@
       "Zugschlus <mh+github201409@zugschlus.de>",
       "bj5004 <bartosz.jakubski@hurra.com>",
       "dams <dams@zarb.org>",
+      "dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
       "hisaichi5518 <hisada.kazuki@gmail.com>",
       "nise_nabe <nise.nabe@gmail.com>",
       "perlpong <calyx238@gmail.com>",
