@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Test::Fatal;
 use Redis::Fast;
-use lib 't/tlib';
+use lib 'xt/tlib';
 use Test::SpawnRedisTimeoutServer;
 use Errno qw(ETIMEDOUT EWOULDBLOCK);
 use POSIX qw(strerror);
