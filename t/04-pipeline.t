@@ -44,11 +44,19 @@ pipeline_ok 'keys in pipelined mode',
 pipeline_ok 'info in pipelined mode',
   (
   [info => [], code(sub { ref $_[0] eq 'HASH' && keys %{ $_[0] } })],
-  [ info => [qw<oops oops>],
-    undef,
-    re(qr{^ERR (?:syntax error|wrong number of arguments for 'info' command)$})
-  ],
   );
+
+eval { $r->info(qw<oops oops>); };
+if ($@) {
+  # from Redis 7.0, `info oops oops` returns an empty string instread of an error.
+  pipeline_ok 'info error in pipelined mode',
+    (
+    [ info => [qw<oops oops>],
+      undef,
+      re(qr{^ERR (?:syntax error|wrong number of arguments for 'info' command)$})
+    ],
+    );
+}
 
 pipeline_ok 'pipeline with multi-bulk reply',
   ([hmset => [kapow => (a => 1, b => 2, c => 3)], 'OK'], [hmget => [kapow => qw<c b a>], [3, 2, 1]],);
