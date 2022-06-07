@@ -127,6 +127,6 @@
       "zhihong zhang <zzh_621@yahoo.com>",
       "Ævar Arnfjörð Bjarmason <avarab@gmail.com>"
    ],
-   "x_serialization_backend" : "JSON::PP version 4.06",
+   "x_serialization_backend" : "JSON::PP version 4.07",
    "x_static_install" : 0
 }
