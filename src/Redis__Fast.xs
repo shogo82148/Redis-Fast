@@ -934,6 +934,7 @@ CODE:
     self->error = (char*)malloc(MAX_ERROR_SIZE);
     self->reconnect_on_error = NULL;
     self->next_reconnect_on_error_at = -1;
+    self->is_connected = 1;
     ST(0) = sv_newmortal();
     sv_setref_pv(ST(0), cls, (void*)self);
     DEBUG_MSG("return %p", ST(0));
