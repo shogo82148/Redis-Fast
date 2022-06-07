@@ -211,7 +211,7 @@ sub new {
                           );
 
                   $data->{sentinels} = [
-                      ( sort { $h{$a} <=> $h{$b} } keys %h ), # sorted existing sentinels,
+                      ( sort { $h{$a} <=> $h{$b} } CORE::keys(%h) ), # sorted existing sentinels,
                       grep { ! $h{$_}; }                      # list of unknown
                       map {
                           my $s = +{ @$_ };
