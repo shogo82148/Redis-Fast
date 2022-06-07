@@ -2,11 +2,12 @@ Revision history for Redis
 
 {{$NEXT}}
     - fix reconnection behavior when no_auto_connect_on_new is enabled #136
+    - fix: Syntax: Ambiguous call resolved as CORE::keys() #137
 
 0.33 2021-10-30T11:29:40Z
     - fix Undefined Behavior in DESTROY, closes #125
     - use monotonic times in tests
-    - supress "Connection reset by peer", closes #124
+    - suppress "Connection reset by peer", closes #124
 
 0.32 2021-10-16T06:06:31Z
     - Fixing segmentation faults when trying to connecting to unreachable hosts #120 (thanks @pepl)
