@@ -14,6 +14,6 @@ my ($c, $srv) = redis(timeout => 1);
 END { $c->() if $c }
 
 ok(my $r = Redis::Fast->new(reconnect => 1, server => $srv, no_auto_connect_on_new => 1), 'new without auto connect');
-ok($r->ping, "ping works");
+ok($r->set("foo", "bar"), "set works");
 
 done_testing();
