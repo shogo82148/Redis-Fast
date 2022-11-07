@@ -49,7 +49,6 @@ jobs:
       - name: list
         id: set-matrix
         run: |
-          from __future__ import print_function
           import json
           perl = [
               '5.36',
@@ -87,7 +86,8 @@ jobs:
               'include': includes
           }
           output = json.dumps(matrix, separators=(',', ':'))
-          print('::set-output name=matrix::{0}'.format(output))
+          with open(os.environ["GITHUB_OUTPUT"], 'a', encoding="utf-8") as f:
+              f.write('matrix={0}'.format(output))
         shell: python
 
   test:
