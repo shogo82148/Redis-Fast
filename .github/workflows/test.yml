@@ -50,6 +50,7 @@ jobs:
         id: set-matrix
         run: |
           import json
+          import os
           perl = [
               '5.36',
               '5.34',
