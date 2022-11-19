@@ -2,6 +2,9 @@ Revision history for Redis
 
 {{$NEXT}}
 
+0.35 2022-11-19T06:48:35Z
+    - bump hireids v1.1.0
+
 0.34 2022-06-07T22:14:47Z
     - fix reconnection behavior when no_auto_connect_on_new is enabled #136
     - fix: Syntax: Ambiguous call resolved as CORE::keys() #137
