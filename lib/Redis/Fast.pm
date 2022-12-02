@@ -170,6 +170,7 @@ sub new {
           or croak("'sentinels' param must be an ArrayRef");
       defined($self->__get_data->{service} = $args{service})
           or croak("Need 'service' name when using 'sentinels'!");
+      croak("Does not support SSL and sentinels") if exists $args{ssl} and $args{ssl};
       $self->__get_data->{sentinels} = $sentinels;
       $self->__get_data->{sentinels_password} = $args{sentinels_password};
       my $on_build_sock = sub {
@@ -239,6 +240,7 @@ sub new {
   $self->__set_cnx_timeout($args{cnx_timeout} || -1);
   $self->__set_read_timeout($args{read_timeout} || -1);
   $self->__set_write_timeout($args{write_timeout} || -1);
+  $self->__set_ssl($args{ssl} || 0);
 
   if (my $cb = $self->_new_reconnect_on_error_cb($args{reconnect_on_error})) {
       $self->__set_reconnect_on_error($cb);
