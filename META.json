@@ -4,7 +4,7 @@
       "Ichinose Shogo <shogo82148@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v3.1.18, CPAN::Meta::Converter version 2.150010",
+   "generated_by" : "Minilla/v3.1.21, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "perl_5"
    ],
@@ -49,7 +49,7 @@
          "requires" : {
             "Time::HiRes" : "1.77",
             "Try::Tiny" : "0",
-            "perl" : "5.008001"
+            "perl" : "5.012000"
          }
       },
       "test" : {
@@ -94,6 +94,7 @@
       "Gregor Herrmann <gregoa@debian.org>",
       "Ivan Kruglov <ivan.kruglov@booking.com>",
       "Ivan Kruglov <ivan.kruglov@yahoo.com>",
+      "James Raspass <jraspass@gmail.com>",
       "Jeff Lavallee <jeff@zeroclue.com>",
       "Jose Luis Perez Diez <jluis@escomposlinux.org>",
       "João Bolila <joao@bolila.com>",
@@ -127,6 +128,6 @@
       "zhihong zhang <zzh_621@yahoo.com>",
       "Ævar Arnfjörð Bjarmason <avarab@gmail.com>"
    ],
-   "x_serialization_backend" : "JSON::PP version 4.11",
+   "x_serialization_backend" : "JSON::PP version 4.16",
    "x_static_install" : 0
 }
