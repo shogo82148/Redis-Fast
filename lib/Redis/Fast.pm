@@ -171,6 +171,7 @@ sub new {
       defined($self->__get_data->{service} = $args{service})
           or croak("Need 'service' name when using 'sentinels'!");
       $self->__get_data->{sentinels} = $sentinels;
+      $self->__get_data->{sentinels_password} = $args{sentinels_password};
       my $on_build_sock = sub {
           my $data = $self->__get_data;
           my $sentinels = $data->{sentinels};
@@ -181,6 +182,7 @@ sub new {
               my $sentinel = eval {
                   Redis::Fast::Sentinel->new(
                       server => $sentinel_address,
+                      password      => $data->{sentinels_password},
                       cnx_timeout   => (   exists $data->{sentinels_cnx_timeout}
                                                ? $data->{sentinels_cnx_timeout}   : 0.1),
                       read_timeout  => (   exists $data->{sentinels_read_timeout}
@@ -484,6 +486,13 @@ Redis::Fast - Perl binding for Redis database
     my $redis = Redis::Fast->new(
       server => 'redis.example.com:8080',
       name => sub { "cache-$$-".++$generation },
+    );
+
+    ## Use Sentinels, possibly with password
+    my $redis = Redis::Fast->new(
+      sentinels => [ '10.0.0.1:16379', '10.0.0.2:16379', ],
+      service   => 'mymaster',
+      sentinels_password => 'TheB1gS3CR3T', # optional
     );
 
     ## Use UNIX domain socket
