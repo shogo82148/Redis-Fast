@@ -21,6 +21,13 @@ Redis::Fast - Perl binding for Redis database
       name => sub { "cache-$$-".++$generation },
     );
 
+    ## Use Sentinels, possibly with password
+    my $redis = Redis::Fast->new(
+      sentinels => [ '10.0.0.1:16379', '10.0.0.2:16379', ],
+      service   => 'mymaster',
+      sentinels_password => 'TheB1gS3CR3T', # optional
+    );
+
     ## Use UNIX domain socket
     my $redis = Redis::Fast->new(sock => '/path/to/socket');
 

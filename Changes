@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.36 2023-07-05T20:20:13Z
     - Define PERL_NO_GET_CONTEXT #142 (thanks @JRaspass)
     - Support password auth with sentinels #144 (thanks @Yenya)
 

@@ -79,7 +79,7 @@
          "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
-   "version" : "0.35",
+   "version" : "0.36",
    "x_contributors" : [
       "Aaron Crane <arc@aaroncrane.co.uk>",
       "Aaron Crane <arc@cpan.org>",
@@ -95,6 +95,7 @@
       "Ivan Kruglov <ivan.kruglov@booking.com>",
       "Ivan Kruglov <ivan.kruglov@yahoo.com>",
       "James Raspass <jraspass@gmail.com>",
+      "Jan \"Yenya\" Kasprzak <kas@fi.muni.cz>",
       "Jeff Lavallee <jeff@zeroclue.com>",
       "Jose Luis Perez Diez <jluis@escomposlinux.org>",
       "João Bolila <joao@bolila.com>",
