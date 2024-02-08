@@ -325,7 +325,7 @@ static redisAsyncContext* __build_sock(pTHX_ Redis__Fast self)
 
     if(self->ssl){
         redisSSLContext* ssl_context;
-        redisSSLContextError ssl_error;
+        redisSSLContextError ssl_error = REDIS_SSL_CTX_NONE;
         ssl_context = redisCreateSSLContext(NULL, NULL, NULL, NULL, NULL, &ssl_error);
 
         if(ssl_context == NULL || ssl_error != REDIS_SSL_CTX_NONE) {
@@ -335,7 +335,7 @@ static redisAsyncContext* __build_sock(pTHX_ Redis__Fast self)
             return NULL;
         }
 
-        if (redisInitiateSSLWithContext(ac, ssl_context) != REDIS_OK) {
+        if (redisInitiateSSLWithContext(&ac->c, ssl_context) != REDIS_OK) {
             DEBUG_MSG("ssl connection error: %s", ac->c.errstr);
             redisAsyncFree(ac);
             redisFreeSSLContext(ssl_context);
