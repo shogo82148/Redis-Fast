@@ -12,9 +12,9 @@ use Carp qw/confess/;
 use Encode;
 use Try::Tiny;
 use Scalar::Util qw(weaken);
+use constant SSL_AVAILABLE => eval { require IO::Socket::SSL };
 
 use Redis::Fast::Sentinel;
-
 
 # small utilities for handling host and port
 sub _join_host_port {
@@ -241,6 +241,13 @@ sub new {
   $self->__set_read_timeout($args{read_timeout} || -1);
   $self->__set_write_timeout($args{write_timeout} || -1);
   $self->__set_ssl($args{ssl} || 0);
+  if ($args{ssl} && SSL_AVAILABLE && $args{SSL_verify_mode}) {
+    # To pass the SSL verify mode to the underlying bindings, we'll use a string
+    $self->__set_ssl_verify_mode("SSL_VERIFY_NONE") if ($args{SSL_verify_mode} == IO::Socket::SSL::SSL_VERIFY_NONE);
+    $self->__set_ssl_verify_mode("SSL_VERIFY_PEER") if ($args{SSL_verify_mode} == IO::Socket::SSL::SSL_VERIFY_PEER);
+    $self->__set_ssl_verify_mode("SSL_VERIFY_FAIL_IF_NO_PEER_CERT") if ($args{SSL_verify_mode} == IO::Socket::SSL::SSL_VERIFY_FAIL_IF_NO_PEER_CERT);
+    $self->__set_ssl_verify_mode("SSL_VERIFY_CLIENT_ONCE") if ($args{SSL_verify_mode} == IO::Socket::SSL::SSL_VERIFY_CLIENT_ONCE);
+  }
 
   if (my $cb = $self->_new_reconnect_on_error_cb($args{reconnect_on_error})) {
       $self->__set_reconnect_on_error($cb);
