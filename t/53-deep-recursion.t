@@ -8,10 +8,15 @@ use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
-my ($c, $srv) = redis(
-    maxclients => 1,
-);
-END { $c->() if $c }
+use constant SSL_AVAILABLE => eval { require IO::Socket::SSL };
+
+my ($c, $t, $srv) = redis(maxclients => 1);
+my $use_ssl = $t ? SSL_AVAILABLE : 0;
+
+END {
+  $c->() if $c;
+  $t->() if $t;
+}
 
 ok my $r1 = Redis::Fast->new(
     server => $srv,
@@ -22,6 +27,8 @@ ok my $r1 = Redis::Fast->new(
         my ( $redis ) = @_;
         $redis->select(1);
     },
+    ssl => $use_ssl,
+    SSL_verify_mode => 0,
 ), "first connection is success";
 
 like(
@@ -35,6 +42,8 @@ like(
               my ( $redis ) = @_;
               $redis->select(1);
           },
+        ssl => $use_ssl,
+        SSL_verify_mode => 0,
       );
   },
   qr/Could not connect to Redis server at/, 'second connection is fail',

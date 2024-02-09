@@ -8,10 +8,17 @@ use lib 't/tlib';
 use Test::SpawnRedisServer;
 use Digest::SHA qw(sha1_hex);
 
-my ($c, $srv) = redis();
-END { $c->() if $c }
+use constant SSL_AVAILABLE => eval { require IO::Socket::SSL };
 
-my $o = Redis::Fast->new(server => $srv);
+my ($c, $t, $srv) = redis();
+my $use_ssl = $t ? SSL_AVAILABLE : 0;
+
+END {
+  $c->() if $c;
+  $t->() if $t;
+}
+
+my $o = Redis::Fast->new(server => $srv, ssl => $use_ssl, SSL_verify_mode => 0);
 
 ## Make sure SCRIPT commands are available
 eval { $o->script_flush };

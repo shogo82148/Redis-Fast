@@ -13,6 +13,8 @@ sub new {
     my ($class, %args) = @_;
     # these args are not allowed when contacting a sentinel
     delete @args{qw(sentinels service)};
+    # Do not support SSL for sentinels
+    $args{ssl} = 0;
 
     $class->SUPER::new(%args);
 }

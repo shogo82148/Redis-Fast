@@ -8,8 +8,15 @@ use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
-my ($c, $srv) = redis(timeout => 3); # redis connection timeouts within 3 seconds.
-END { $c->() if $c }
+use constant SSL_AVAILABLE => eval { require IO::Socket::SSL };
+
+my ($c, $t, $srv) = redis(timeout => 3); # redis connection timeouts within 3 seconds.
+my $use_ssl = $t ? SSL_AVAILABLE : 0;
+
+END {
+  $c->() if $c;
+  $t->() if $t;
+}
 
 # Reconnect once
 # when
@@ -52,6 +59,8 @@ subtest 'reconnect option is 0: reconnect_on_error is not called' => sub {
         my $r = Redis::Fast->new(
             reconnect          => 0, # do not trigger reconnection.
             server             => $srv,
+            ssl                => $use_ssl,
+            SSL_verify_mode    => 0,
             reconnect_on_error => sub { $cb_call_count++ },
         );
         my $hint = $call_hset->($r, "reconnect is 0");
@@ -66,6 +75,8 @@ subtest 'reconnect option is 1: reconnect_on_error is called once' => sub {
         my $r = Redis::Fast->new(
             reconnect          => 1, # trigger reconnection until 1 second elapsed.
             server             => $srv,
+            ssl                => $use_ssl,
+            SSL_verify_mode    => 0,
             reconnect_on_error => sub {
                 my ($error, $ret, $cmd) = @_;
 
@@ -95,6 +106,8 @@ subtest "reconnect_on_error returns -1: redis ERR doesn't trigger reconnection" 
         my $r = Redis::Fast->new(
             reconnect          => 1,
             server             => $srv,
+            ssl                => $use_ssl,
+            SSL_verify_mode    => 0,
             on_connect         => sub { $connect_count++ },
             reconnect_on_error => sub {
                 $cb_call_count++;
@@ -120,6 +133,8 @@ subtest "reconnect_on_error returns 0: redis ERR triggers reconnection" => sub {
         my $r = Redis::Fast->new(
             reconnect          => 1,
             server             => $srv,
+            ssl                => $use_ssl,
+            SSL_verify_mode    => 0,
             on_connect         => sub { $connect_count++ },
             reconnect_on_error => sub {
                 $cb_call_count++;
@@ -147,6 +162,8 @@ subtest "reconnection will not be triggered until specified seconds elapsed." =>
         my $r = Redis::Fast->new(
             reconnect          => 1,
             server             => $srv,
+            ssl                => $use_ssl,
+            SSL_verify_mode    => 0,
             reconnect_on_error => sub {
                 $cb_call_count++;
                 return $cb_return_value;
@@ -185,6 +202,8 @@ subtest "reconnection will be triggered after specified seconds elapsed." => sub
         my $r = Redis::Fast->new(
             reconnect          => 1,
             server             => $srv,
+            ssl                => $use_ssl,
+            SSL_verify_mode    => 0,
             reconnect_on_error => sub {
                 $cb_call_count++;
                 return $cb_return_value;

@@ -6,11 +6,25 @@ use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
-my ($c, $srv) = redis();
-END { $c->() if $c }
+use constant SSL_AVAILABLE => eval { require IO::Socket::SSL };
+
+my ($c, $t, $srv) = redis();
+my $use_ssl = $t ? SSL_AVAILABLE : 0;
+
+END {
+  $c->() if $c;
+  $t->() if $t;
+}
 
 unless (fork()) {
-    my $redis = Redis::Fast->new(server => $srv, name => 'my_name_is_glorious', reconnect=>1, read_timeout  => 0.3);
+    my $redis = Redis::Fast->new(
+        server => $srv,
+        name => 'my_name_is_glorious',
+        reconnect => 1,
+        read_timeout => 0.3,
+        ssl => $use_ssl,
+        SSL_verify_mode => 0,
+    );
     eval { $redis->blpop("notakey", 1); };
     exit 0;
 }
