@@ -47,7 +47,7 @@ sub redis {
   my $addr = "127.0.0.1:$local_port";
 
   unlink("redis-server-$addr.log");
-  unlink('dump.rdb');
+  unlink('dump.rdb') unless $params{skip_unlink};
 
   # Spawn the tunnel first so that we know if we can test SSL/TLS setup
   my $stunnel_addr = "127.0.0.1:$stunnel_port";
@@ -107,6 +107,7 @@ key = t/ssl/key.pem
     unixsocketperm 700
     loglevel debug
     logfile redis-server-$addr.log
+    rdbcompression no
   ");
   $fh->print("maxclients $params{maxclients}\n") if $params{maxclients};
   $fh->print("requirepass $params{password}\n") if $params{password};

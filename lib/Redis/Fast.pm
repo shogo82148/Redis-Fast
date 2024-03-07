@@ -31,12 +31,13 @@ sub _split_host_port {
 }
 
 sub _new_on_connect_cb {
-    my ($self, $on_conn, $password, $name) = @_;
+    my ($self, $on_conn, $password, $name, $wait_until_loaded) = @_;
     weaken $self;
     my $handler = sub {
         # If we are in PubSub mode we shouldn't perform any command besides
         # (p)(un)subscribe
         if (! $self->is_subscriber) {
+            $self->__wait_until_loaded if $wait_until_loaded;
             defined $name
                 and try {
                     my $n = $name;
@@ -153,7 +154,7 @@ sub new {
   my $on_conn = $args{on_connect};
   my $password = $args{password};
   my $name = $args{name};
-  $self->__set_on_connect($self->_new_on_connect_cb($on_conn, $password, $name));
+  $self->__set_on_connect($self->_new_on_connect_cb($on_conn, $password, $name, $args{wait_until_loaded}));
   $self->__set_data({
       subscribers => {},
       sentinels_cnx_timeout    => $args{sentinels_cnx_timeout},
@@ -467,6 +468,14 @@ sub __is_valid_command {
 
   confess("Cannot use command '$cmd' while in SUBSCRIBE mode, ")
     if $self->is_subscriber;
+}
+
+
+sub __wait_until_loaded {
+    my ($self) = @_;
+    local $@;
+    require Time::HiRes;
+    while ( !eval{ $self->exists('checking_persistent_state'); 1 } && $@ =~ m/LOADING/ ) { Time::HiRes::usleep(100_000); }
 }
 
 1;    # End of Redis.pm
