@@ -10,22 +10,37 @@ use Redis::Fast::Sentinel;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
+if ($ENV{USE_SSL}) {
+    diag 'Overriding ENV USE_SSL as it is not supported for sentinels';
+    $ENV{USE_SSL}= 0;
+}
 my @ret = redis();
-my $redis_port = pop @ret;
-my ($c, $redis_addr) = @ret;
-END { diag 'shutting down redis'; $c->() if $c }
+my $redis_port = $ret[-2];
+my ($c, $t, $redis_addr) = @ret;
+
+END { 
+    diag 'shutting down redis'; 
+    $c->() if $c;
+    $t->() if $t;
+}
 
 diag "redis address : $redis_addr\n";
 
 my @ret2 = sentinel( redis_port => $redis_port );
 my $sentinel_port = pop @ret2;
 my ($c2, $sentinel_addr) = @ret2;
-END { diag 'shutting down sentinel'; $c2->() if $c2 }
+END {
+    diag 'shutting down sentinel';
+    $c2->() if $c2;
+}
 
 my @ret3 = sentinel( redis_port => $redis_port );
-my $sentinel2_port = pop @ret3;
+my $sentinel2_port = $ret3[-1];
 my ($c3, $sentinel2_addr) = @ret3;
-END { diag 'shutting down sentinel2'; $c3->() if $c3 }
+END {
+    diag 'shutting down sentinel2';
+    $c3->() if $c3;
+}
 
 diag "sentinel address: $sentinel_addr\n";
 diag "sentinel2 address: $sentinel2_addr\n";

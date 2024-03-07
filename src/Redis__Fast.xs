@@ -5,6 +5,7 @@
 
 #include "ppport.h"
 #include "hiredis.h"
+#include "hiredis_ssl.h"
 #include "async.h"
 
 #include <string.h>
@@ -57,6 +58,8 @@ typedef struct redis_fast_s {
     int is_subscriber;
     int expected_subs;
     pid_t pid;
+    int ssl;
+    int ssl_verify_mode;
     int flags;
 } redis_fast_t, *Redis__Fast;
 
@@ -320,6 +323,36 @@ static redisAsyncContext* __build_sock(pTHX_ Redis__Fast self)
         redisAsyncFree(ac);
         return NULL;
     }
+
+    if(self->ssl){
+        redisSSLContext* ssl_context;
+        redisSSLContextError ssl_error = REDIS_SSL_CTX_NONE;
+        redisSSLOptions options = {
+            .cacert_filename      = NULL,
+            .capath               = NULL,
+            .cert_filename        = NULL,
+            .private_key_filename = NULL,
+            .server_name          = self->hostname,
+            .verify_mode          = self->ssl_verify_mode,
+        };
+        ssl_context = redisCreateSSLContextWithOptions(&options, &ssl_error);
+
+        if(ssl_context == NULL || ssl_error != REDIS_SSL_CTX_NONE) {
+            DEBUG_MSG("ssl context error: %s", redisSSLContextGetError(ssl_error));
+            redisAsyncFree(ac);
+            redisFreeSSLContext(ssl_context);
+            return NULL;
+        }
+
+        if (redisInitiateSSLWithContext(&ac->c, ssl_context) != REDIS_OK) {
+            DEBUG_MSG("ssl connection error: %s", ac->c.errstr);
+            redisAsyncFree(ac);
+            redisFreeSSLContext(ssl_context);
+            return NULL;
+        }
+        DEBUG_MSG("%s", "ssl connection setup");
+    }
+
     ac->data = (void*)self;
     self->ac = ac;
     self->is_connected = 0;
@@ -936,6 +969,7 @@ PREINIT:
 redis_fast_t* self;
 CODE:
 {
+    redisInitOpenSSL();
     Newxz(self, sizeof(redis_fast_t), redis_fast_t);
     DEBUG_MSG("%s", "start");
     self->error = (char*)malloc(MAX_ERROR_SIZE);
@@ -1149,6 +1183,40 @@ CODE:
     }
 
     RETVAL = self->next_reconnect_on_error_at = val;
+}
+OUTPUT:
+    RETVAL
+
+int
+__set_ssl(Redis::Fast self, int ssl)
+CODE:
+{
+    RETVAL = self->ssl = ssl;
+}
+OUTPUT:
+    RETVAL
+
+int
+__set_ssl_verify_mode(Redis::Fast self, char* verify_mode)
+CODE:
+{
+    if (verify_mode != NULL) {
+        DEBUG_MSG("SSL verify mode: %s", verify_mode);
+        if (strcmp(verify_mode, "SSL_VERIFY_NONE") == 0 ) {
+            RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_NONE;
+        } else if (strcmp(verify_mode, "SSL_VERIFY_PEER") == 0 ) {
+            RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_PEER;
+        } else if (strcmp(verify_mode, "SSL_VERIFY_FAIL_IF_NO_PEER_CERT") == 0 ) {
+            RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+        } else if (strcmp(verify_mode, "SSL_VERIFY_CLIENT_ONCE") == 0 ) {
+            RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_CLIENT_ONCE;
+        } else {
+            DEBUG_MSG("Invalid SSL verify mode (%s), setting SSL_VERIFY_PEER", verify_mode);
+            RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_PEER;
+        }
+    } else {
+        RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_PEER;
+    }
 }
 OUTPUT:
     RETVAL

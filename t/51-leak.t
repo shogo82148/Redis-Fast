@@ -7,17 +7,24 @@ use Test::SpawnRedisServer;
 use Test::SharedFork;
 use Socket;
 
-my ($c, $srv) = redis();
-END { $c->() if $c }
+use constant SSL_AVAILABLE => eval { require IO::Socket::SSL };
+
+my ($c, $t, $srv) = redis();
+my $use_ssl = $t ? SSL_AVAILABLE : 0;
+
+END {
+  $c->() if $c;
+  $t->() if $t;
+}
 
 use Test::LeakTrace;
 
 no_leaks_ok {
-    my $r = Redis::Fast->new(server => $srv);
+    my $r = Redis::Fast->new(server => $srv, ssl => $use_ssl, SSL_verify_mode => 0);
 } 'Redis::Fast->new';
 
 no_leaks_ok {
-    my $r = Redis::Fast->new(server => $srv);
+    my $r = Redis::Fast->new(server => $srv, ssl => $use_ssl, SSL_verify_mode => 0);
     my $res;
     $r->set('hogehoge', 'fugafuga');
     $res = $r->get('hogehoge');
@@ -25,7 +32,7 @@ no_leaks_ok {
 } 'sync get/set';
 
 no_leaks_ok {
-    my $r = Redis::Fast->new(server => $srv);
+    my $r = Redis::Fast->new(server => $srv, ssl => $use_ssl, SSL_verify_mode => 0);
     my $res;
     $r->set('hogehoge', 'fugafuga', sub { });
     $r->get('hogehoge', sub { $res = shift });
@@ -34,7 +41,7 @@ no_leaks_ok {
 } 'async get/set';
 
 no_leaks_ok {
-    my $r = Redis::Fast->new(server => $srv);
+    my $r = Redis::Fast->new(server => $srv, ssl => $use_ssl, SSL_verify_mode => 0);
     my $res;
     $r->rpush('hogehoge', 'fugafuga') for (1..3);
     $res = $r->lrange('hogehoge', 0, -1);
@@ -42,7 +49,7 @@ no_leaks_ok {
 } 'sync list operation';
 
 no_leaks_ok {
-    my $r = Redis::Fast->new(server => $srv);
+    my $r = Redis::Fast->new(server => $srv, ssl => $use_ssl, SSL_verify_mode => 0);
     my $res;
     $r->rpush('hogehoge', 'fugafuga') for (1..3);
     $r->lrange('hogehoge', 0, -1, sub { $res = shift });
@@ -51,7 +58,7 @@ no_leaks_ok {
 } 'async list operation';
 
 no_leaks_ok {
-    my $r = Redis::Fast->new(server => $srv);
+    my $r = Redis::Fast->new(server => $srv, ssl => $use_ssl, SSL_verify_mode => 0);
     my $cb = sub {};
     $r->subscribe('hogehoge', $cb);
     $r->wait_for_messages(0);
@@ -66,6 +73,8 @@ no_leaks_ok {
             my $force_reconnect = 1;
             return $force_reconnect;
         },
+        ssl => $use_ssl,
+        SSL_verify_mode => 0,
     );
     eval { $r->hset(1,1) };
 } 'sync reconnect_on_error';
@@ -78,6 +87,8 @@ no_leaks_ok {
             my $force_reconnect = 1;
             return $force_reconnect;
         },
+        ssl => $use_ssl,
+        SSL_verify_mode => 0,
     );
     my $cb = sub {};
     $r->hset(1,1,$cb);
@@ -86,7 +97,7 @@ no_leaks_ok {
 } 'async reconnect_on_error';
 
 no_leaks_ok {
-    my $r = Redis::Fast->new(server => $srv);
+    my $r = Redis::Fast->new(server => $srv, ssl => $use_ssl, SSL_verify_mode => 0);
     $r->info();
 } 'info';
 

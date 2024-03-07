@@ -7,9 +7,17 @@ use Test::SpawnRedisServer;
 use Test::SharedFork;
 use Socket;
 
-my ($c, $srv) = redis();
-END { $c->() if $c }
-my $o = Redis::Fast->new(server => $srv, name => 'my_name_is_glorious');
+use constant SSL_AVAILABLE => eval { require IO::Socket::SSL };
+
+my ($c, $t, $srv) = redis();
+my $use_ssl = $t ? SSL_AVAILABLE : 0;
+
+END {
+  $c->() if $c;
+  $t->() if $t;
+}
+
+my $o = Redis::Fast->new(server => $srv, name => 'my_name_is_glorious', ssl => $use_ssl, SSL_verify_mode => 0);
 is $o->info->{connected_clients}, 1;
 my $localport = $o->__get_port;
 

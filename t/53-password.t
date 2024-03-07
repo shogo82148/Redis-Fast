@@ -8,16 +8,23 @@ use Redis::Fast;
 use lib 't/tlib';
 use Test::SpawnRedisServer;
 
+use constant SSL_AVAILABLE => eval { require IO::Socket::SSL };
+
 my $password = 'very-very-long-strong-password';
-my ($c, $srv) = redis(
+my ($c, $t, $srv) = redis(
     password => $password,
 );
-END { $c->() if $c }
+my $use_ssl = $t ? SSL_AVAILABLE : 0;
+
+END {
+  $c->() if $c;
+  $t->() if $t;
+}
 
 subtest 'no password' => sub {
     my $o;
     is(
-        exception { $o = Redis::Fast->new(server => $srv) },
+        exception { $o = Redis::Fast->new(server => $srv, ssl => $use_ssl, SSL_verify_mode => 0) },
         undef, 'connect is success',
     );
 
@@ -31,7 +38,7 @@ subtest 'no password' => sub {
 subtest 'wrong password' => sub {
     my $o;
     like(
-        exception { $o = Redis::Fast->new(server => $srv, password => 'wrong-password') },
+        exception { $o = Redis::Fast->new(server => $srv, password => 'wrong-password', ssl => $use_ssl, SSL_verify_mode => 0) },
         qr/Redis server refused password/, 'connect is fail',
     );
 };
@@ -39,7 +46,7 @@ subtest 'wrong password' => sub {
 subtest 'correct password' => sub {
     my $o;
     is(
-        exception { $o = Redis::Fast->new(server => $srv, password => $password) },
+        exception { $o = Redis::Fast->new(server => $srv, password => $password, ssl => $use_ssl, SSL_verify_mode => 0) },
         undef, 'connect is success',
     );
 

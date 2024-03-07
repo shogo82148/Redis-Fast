@@ -14,7 +14,7 @@ sub new {
         c_source             => 'src',
         xs_files             => { './src/Redis__Fast.xs' => './lib/Redis/Fast.xs', },
         include_dirs         => ['src', 'deps/hiredis'],
-        extra_linker_flags   => ["deps/hiredis/libhiredis$Config{lib_ext}"],
+        extra_linker_flags   => ["deps/hiredis/libhiredis$Config{lib_ext}", "deps/hiredis/libhiredis_ssl$Config{lib_ext}", "-lssl", "-lcrypto"],
 
         test_requires => {
             "Digest::SHA"           => "0",
@@ -46,7 +46,7 @@ sub new {
             $self->do_system('git','submodule','update','--init');
         }
     }
-    $self->do_system($make, '-C', 'deps/hiredis', 'static');
+    $self->do_system($make, '-C', 'deps/hiredis', 'static', 'USE_SSL=1');
     return $self;
 }
 
