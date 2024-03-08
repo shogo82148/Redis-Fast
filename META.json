@@ -4,7 +4,7 @@
       "Ichinose Shogo <shogo82148@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v3.1.21, CPAN::Meta::Converter version 2.150010",
+   "generated_by" : "Minilla/v3.1.23, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "perl_5"
    ],
@@ -49,7 +49,7 @@
          "requires" : {
             "Time::HiRes" : "1.77",
             "Try::Tiny" : "0",
-            "perl" : "5.012000"
+            "perl" : "5.014000"
          }
       },
       "test" : {
@@ -79,7 +79,7 @@
          "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
-   "version" : "0.36",
+   "version" : "0.37",
    "x_contributors" : [
       "Aaron Crane <arc@aaroncrane.co.uk>",
       "Aaron Crane <arc@cpan.org>",
@@ -109,11 +109,13 @@
       "Steffen Mueller <smueller@cpan.org>",
       "Syohei YOSHIDA <syohex@gmail.com>",
       "Thiago Berlitz Rondon <thiago.rondon@gmail.com>",
+      "Thomas Koeck <126570154+thomas-netcraft@users.noreply.github.com>",
       "U-LIFEBOOK\\Administrator <Administrator@LIFEBOOK.(none)>",
       "Ulrich Habel <rhaen@cpan.org>",
       "Victor <victor@vsespb.ru>",
       "Vincent <vincent@weborama.com>",
       "Volker Kroll <vkroll@allein-zu-haus.de>",
+      "William Seddon <wsddn@users.noreply.github.com>",
       "Xavier Guimard <x.guimard@free.fr>",
       "Zugschlus <mh+github201409@zugschlus.de>",
       "bj5004 <bartosz.jakubski@hurra.com>",

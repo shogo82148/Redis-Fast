@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.37 2024-03-08T16:30:20Z
     -  Add SSL/TLS support #150 (thanks @thomas-netcraft)
     - drop support of Perl 5.12 #151
     - bump hiredis v1.2.0 #152
