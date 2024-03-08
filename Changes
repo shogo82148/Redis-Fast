@@ -1,6 +1,9 @@
 Revision history for Redis
 
 {{$NEXT}}
+    -  Add SSL/TLS support #150 (thanks @thomas-netcraft)
+    - drop support of Perl 5.12 #151
+    - bump hiredis v1.2.0 #152
 
 0.36 2023-07-05T20:20:13Z
     - Define PERL_NO_GET_CONTEXT #142 (thanks @JRaspass)
