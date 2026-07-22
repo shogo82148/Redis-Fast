@@ -34,7 +34,7 @@ jobs:
       - name: Set up Redis
         uses: shogo82148/actions-setup-redis@abd15d4028c04b9a6ea7917f1f3d931c14b6871f # v1.54.0
         with:
-          redis-version: "6.2"
+          redis-version: "8.8"
           auto-start: false
 
       - name: Test
@@ -65,15 +65,12 @@ jobs:
               '5.24',
           ]
           redis = [
+              '8.8',
+              '8.6',
+              '8.4',
+              '7.4',
               '7.2',
-              '7.0',
               '6.2',
-              '6.0',
-              '5.0',
-              '4.0',
-              '3.2',
-              '3.0',
-              '2.8',
           ]
           includes = []
           for r in redis:
