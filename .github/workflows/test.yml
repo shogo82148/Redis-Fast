@@ -22,7 +22,7 @@ jobs:
       - name: Set up Perl
         uses: shogo82148/actions-setup-perl@v1
         with:
-          perl-version: "5.38"
+          perl-version: "5.44"
           install-modules-with: cpm
           install-modules-args: --with-develop --with-configure
           install-modules: |
@@ -52,6 +52,9 @@ jobs:
           import json
           import os
           perl = [
+              '5.44',
+              '5.42',
+              '5.40',
               '5.38',
               '5.36',
               '5.34',
