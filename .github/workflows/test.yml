@@ -32,7 +32,7 @@ jobs:
             Test::MinimumVersion::Fast
 
       - name: Set up Redis
-        uses: shogo82148/actions-setup-redis@abd15d4028c04b9a6ea7917f1f3d931c14b6871f # v1.54.0
+        uses: shogo82148/actions-setup-redis@59cda539fd5cc9be4c42bb07e4b28156951f37d6 # v1.55.0
         with:
           redis-version: "8.8"
           auto-start: false
@@ -114,7 +114,7 @@ jobs:
           install-modules: Minilla URI
 
       - name: Set up Redis ${{ matrix.redis }}
-        uses: shogo82148/actions-setup-redis@abd15d4028c04b9a6ea7917f1f3d931c14b6871f # v1.54.0
+        uses: shogo82148/actions-setup-redis@59cda539fd5cc9be4c42bb07e4b28156951f37d6 # v1.55.0
         with:
           redis-version: ${{ matrix.redis }}
           auto-start: false
