@@ -1,4 +1,4 @@
-package Redis::Fast 0.37;
+package Redis::Fast 0.38;
 
 BEGIN {
     use XSLoader;

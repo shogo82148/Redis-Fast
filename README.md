@@ -1,4 +1,4 @@
-[![Actions Status](https://github.com/shogo82148/Redis-Fast/workflows/Test/badge.svg)](https://github.com/shogo82148/Redis-Fast/actions) [![MetaCPAN Release](https://badge.fury.io/pl/Redis-Fast.svg)](https://metacpan.org/release/Redis-Fast)
+[![Actions Status](https://github.com/shogo82148/Redis-Fast/actions/workflows/Test.yml/badge.svg?branch=main)](https://github.com/shogo82148/Redis-Fast/actions?workflow=Test) [![MetaCPAN Release](https://badge.fury.io/pl/Redis-Fast.svg)](https://metacpan.org/release/Redis-Fast)
 # NAME
 
 Redis::Fast - Perl binding for Redis database

@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.38 2026-07-27T12:41:46Z
     - bump hiredis v1.4.0 #149
     - drop support of Perl 5.22 #159
 
