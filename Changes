@@ -1,6 +1,7 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - Drop support of Perl 5.22 #159
 
 0.39 2026-07-27T13:49:06Z
     - Avoid constructor failures when IO::Socket::SSL is unavailable #162
