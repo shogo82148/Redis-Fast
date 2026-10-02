@@ -1,8 +1,8 @@
-requires 'perl', '5.014000';
+requires 'perl', '5.024000';
 requires 'Try::Tiny';
 requires 'Time::HiRes' => '>=1.77';
 
-on 'configure' => sub{
+on 'configure' => sub {
     requires 'Module::Build::XSUtil' => '>=0.02';
     requires 'File::Which';
 };
