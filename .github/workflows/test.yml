@@ -20,7 +20,7 @@ jobs:
           git submodule update --recursive
 
       - name: Set up Perl
-        uses: shogo82148/actions-setup-perl@ac3202722f5744e62a8fa3af3e1aaaebb08861f3 # v1.44.0
+        uses: shogo82148/actions-setup-perl@b61fd6db748050f91bedd4d72ad5e404b5177cc0 # v1.44.1
         with:
           perl-version: "5.44"
           install-modules-with: cpm
@@ -104,7 +104,7 @@ jobs:
           git submodule update --recursive
 
       - name: Set up Perl ${{ matrix.perl }}
-        uses: shogo82148/actions-setup-perl@ac3202722f5744e62a8fa3af3e1aaaebb08861f3 # v1.44.0
+        uses: shogo82148/actions-setup-perl@b61fd6db748050f91bedd4d72ad5e404b5177cc0 # v1.44.1
         with:
           perl-version: ${{ matrix.perl }}
           install-modules-with: cpm
