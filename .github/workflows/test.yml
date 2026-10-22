@@ -20,7 +20,7 @@ jobs:
           git submodule update --recursive
 
       - name: Set up Perl
-        uses: shogo82148/actions-setup-perl@8b574cdc2dffdae49f803204a4f2b716a2fa1db7 # v1.44.2
+        uses: shogo82148/actions-setup-perl@configure-openssl-path
         with:
           perl-version: "5.44"
           install-modules-with: cpm
