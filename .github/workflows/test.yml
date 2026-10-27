@@ -20,7 +20,7 @@ jobs:
           git submodule update --recursive
 
       - name: Set up Perl
-        uses: shogo82148/actions-setup-perl@8b574cdc2dffdae49f803204a4f2b716a2fa1db7 # v1.44.2
+        uses: shogo82148/actions-setup-perl@3b59bd33efdae98406a9bc4b75a4aa041e11993a # v1.44.4
         with:
           perl-version: "5.44"
           install-modules-with: cpm
@@ -32,7 +32,7 @@ jobs:
             Test::MinimumVersion::Fast
 
       - name: Set up Redis
-        uses: shogo82148/actions-setup-redis@ffaf3c39499b2917543d84f6acc818277580b531 # v1.58.1
+        uses: shogo82148/actions-setup-redis@d566e806806d1bac2b414538d57b2b7f721e1d83 # v1.60.0
         with:
           redis-version: "8.8"
           auto-start: false
@@ -104,7 +104,7 @@ jobs:
           git submodule update --recursive
 
       - name: Set up Perl ${{ matrix.perl }}
-        uses: shogo82148/actions-setup-perl@8b574cdc2dffdae49f803204a4f2b716a2fa1db7 # v1.44.2
+        uses: shogo82148/actions-setup-perl@3b59bd33efdae98406a9bc4b75a4aa041e11993a # v1.44.4
         with:
           perl-version: ${{ matrix.perl }}
           install-modules-with: cpm
@@ -114,7 +114,7 @@ jobs:
           install-modules: Minilla URI
 
       - name: Set up Redis ${{ matrix.redis }}
-        uses: shogo82148/actions-setup-redis@ffaf3c39499b2917543d84f6acc818277580b531 # v1.58.1
+        uses: shogo82148/actions-setup-redis@d566e806806d1bac2b414538d57b2b7f721e1d83 # v1.60.0
         with:
           redis-version: ${{ matrix.redis }}
           auto-start: false
