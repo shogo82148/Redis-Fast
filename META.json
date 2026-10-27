@@ -29,7 +29,7 @@
    "prereqs" : {
       "configure" : {
          "requires" : {
-            "Crypt::OpenSSL::Guess" : "0",
+            "Crypt::OpenSSL::Guess" : "0.10",
             "File::Which" : "0",
             "Module::Build" : "0.4005",
             "Module::Build::XSUtil" : "0.02"
