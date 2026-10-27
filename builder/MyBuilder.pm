@@ -51,7 +51,7 @@ sub new {
             $self->do_system('git','submodule','update','--init');
         }
     }
-    $self->do_system($make, '-C', 'deps/hiredis', 'static', 'USE_SSL=1', "OPENSSL_PREFIX=$openssl_prefix");
+    $self->do_system($make, '-C', 'deps/hiredis', 'static', 'USE_SSL=1', ($openssl_prefix ? ("OPENSSL_PREFIX=$openssl_prefix") : ()));
     return $self;
 }
 
