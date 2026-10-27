@@ -334,6 +334,8 @@ static redisAsyncContext* __build_sock(pTHX_ Redis__Fast self)
             .private_key_filename = NULL,
             .server_name          = self->hostname,
             .verify_mode          = self->ssl_verify_mode,
+            /* server_name is only used for SNI; verify_name makes the peer certificate match the hostname */
+            .verify_name          = (self->ssl_verify_mode & REDIS_SSL_VERIFY_PEER) ? self->hostname : NULL,
         };
         ssl_context = redisCreateSSLContextWithOptions(&options, &ssl_error);
 
