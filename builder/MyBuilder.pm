@@ -11,7 +11,7 @@ sub new {
     my ( $class, %args ) = @_;
 
     my $openssl_prefix = find_openssl_prefix();
-    my @openssl_ldflags = ( openssl_lib_paths() );
+    my @openssl_ldflags = split(' ', openssl_lib_paths());
 
     my $self = $class->SUPER::new(
         %args,
