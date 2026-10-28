@@ -5,6 +5,7 @@ requires 'Time::HiRes' => '>=1.77';
 on 'configure' => sub {
     requires 'Module::Build::XSUtil' => '>=0.02';
     requires 'File::Which';
+    requires 'Crypt::OpenSSL::Guess' => '>=0.10';
 };
 
 on 'test' => sub {
