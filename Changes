@@ -1,6 +1,11 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - [INCOMPATIBLE] Verify the server certificate by default when ssl is enabled.
+      Pass SSL_verify_mode => 0 to restore the previous behavior (not recommended).
+    - SSL_verify_mode no longer requires IO::Socket::SSL, accepts combined flags,
+      and croaks on invalid values instead of silently disabling the verification.
+    - Verify the server host name in TLS when SSL_VERIFY_PEER is set #176
     - bump hiredis v1.5.0 #176
     - Drop support of Perl 5.22 #159
 

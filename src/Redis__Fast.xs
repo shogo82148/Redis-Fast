@@ -978,6 +978,7 @@ CODE:
     self->reconnect_on_error = NULL;
     self->next_reconnect_on_error_at = -1;
     self->is_connected = 1;
+    self->ssl_verify_mode = REDIS_SSL_VERIFY_PEER;
     ST(0) = sv_newmortal();
     sv_setref_pv(ST(0), cls, (void*)self);
     DEBUG_MSG("return %p", ST(0));
@@ -1199,26 +1200,12 @@ OUTPUT:
     RETVAL
 
 int
-__set_ssl_verify_mode(Redis::Fast self, char* verify_mode)
+__set_ssl_verify_mode(Redis::Fast self, int verify_mode)
 CODE:
 {
-    if (verify_mode != NULL) {
-        DEBUG_MSG("SSL verify mode: %s", verify_mode);
-        if (strcmp(verify_mode, "SSL_VERIFY_NONE") == 0 ) {
-            RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_NONE;
-        } else if (strcmp(verify_mode, "SSL_VERIFY_PEER") == 0 ) {
-            RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_PEER;
-        } else if (strcmp(verify_mode, "SSL_VERIFY_FAIL_IF_NO_PEER_CERT") == 0 ) {
-            RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-        } else if (strcmp(verify_mode, "SSL_VERIFY_CLIENT_ONCE") == 0 ) {
-            RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_CLIENT_ONCE;
-        } else {
-            DEBUG_MSG("Invalid SSL verify mode (%s), setting SSL_VERIFY_PEER", verify_mode);
-            RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_PEER;
-        }
-    } else {
-        RETVAL = self->ssl_verify_mode = REDIS_SSL_VERIFY_PEER;
-    }
+    /* REDIS_SSL_VERIFY_* have the same values as OpenSSL's SSL_VERIFY_* (and IO::Socket::SSL's constants) */
+    DEBUG_MSG("SSL verify mode: %d", verify_mode);
+    RETVAL = self->ssl_verify_mode = verify_mode;
 }
 OUTPUT:
     RETVAL
