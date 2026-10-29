@@ -482,7 +482,8 @@ static redis_fast_reply_t Redis__Fast_decode_reply(pTHX_ Redis__Fast self, redis
         res.result = &PL_sv_undef;
         break;
 
-    case REDIS_REPLY_ARRAY: {
+    case REDIS_REPLY_ARRAY:
+    case REDIS_REPLY_PUSH: {
         AV* av = newAV();
         size_t i;
         res.result = sv_2mortal(newRV_noinc((SV*)av));
@@ -711,7 +712,8 @@ static void Redis__Fast_subscribe_cb(redisAsyncContext* c, void* reply, void* pr
         DEBUG_MSG("connect error: %s", c->errstr);
         return;
     }
-    if (r->type != REDIS_REPLY_ARRAY || r->elements < 3 || r->element[0]->type != REDIS_REPLY_STRING) {
+    /* subscription replies are arrays in RESP2 and pushes in RESP3 */
+    if ((r->type != REDIS_REPLY_ARRAY && r->type != REDIS_REPLY_PUSH) || r->elements < 3 || r->element[0]->type != REDIS_REPLY_STRING) {
         DEBUG_MSG("%s", "unexpected reply");
         return;
     }
