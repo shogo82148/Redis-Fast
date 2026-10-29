@@ -136,6 +136,33 @@ This unit is a second, and the type is double. For example, 0.01 means 10 millis
 
 Note: This feature is not supported for the subscribed mode.
 
+## SSL/TLS
+
+Set the `ssl` option to connect to the server over TLS.
+
+    my $r = Redis::Fast->new(
+      server => 'redis.example.com:6380',
+      ssl    => 1,
+    );
+
+By default the server certificate is verified against the system CA store,
+and its name must match the host name in `server`.
+To trust a private CA, point the `SSL_CERT_FILE` or `SSL_CERT_DIR`
+environment variable at it.
+
+`SSL_verify_mode` changes the verification mode.
+It accepts the `SSL_VERIFY_*` constants of [IO::Socket::SSL](https://metacpan.org/pod/IO%3A%3ASocket%3A%3ASSL),
+but IO::Socket::SSL is not required.
+Passing `0` (`SSL_VERIFY_NONE`) disables the verification,
+which makes the connection vulnerable to man-in-the-middle attacks.
+
+    use IO::Socket::SSL qw(SSL_VERIFY_NONE);
+    my $r = Redis::Fast->new(
+      server          => 'redis.example.com:6380',
+      ssl             => 1,
+      SSL_verify_mode => SSL_VERIFY_NONE, # not recommended
+    );
+
 # PERFORMANCE IN SYNCHRONIZE MODE
 
 ## Redis.pm

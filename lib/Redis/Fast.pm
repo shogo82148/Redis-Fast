@@ -8,11 +8,10 @@ BEGIN {
 use warnings;
 use strict;
 
-use Carp qw/confess/;
+use Carp qw/confess croak/;
 use Encode;
 use Try::Tiny;
 use Scalar::Util qw(weaken);
-use constant SSL_AVAILABLE => eval { require IO::Socket::SSL };
 
 use Redis::Fast::Sentinel;
 
@@ -241,14 +240,12 @@ sub new {
   $self->__set_read_timeout($args{read_timeout} || -1);
   $self->__set_write_timeout($args{write_timeout} || -1);
   $self->__set_ssl($args{ssl} || 0);
-  if ($args{ssl} && SSL_AVAILABLE && $args{SSL_verify_mode}) {
-    # To pass the SSL verify mode to the underlying bindings, we'll use a string
-    for my $str (qw(SSL_VERIFY_NONE SSL_VERIFY_PEER SSL_VERIFY_FAIL_IF_NO_PEER_CERT SSL_VERIFY_CLIENT_ONCE)) {
-      if ($args{SSL_verify_mode} == IO::Socket::SSL->$str) {
-        $self->__set_ssl_verify_mode($str);
-        last;
-      }
-    }
+  if (defined(my $mode = $args{SSL_verify_mode})) {
+    # SSL_VERIFY_* are bit flags with the same values in IO::Socket::SSL, OpenSSL and hiredis.
+    # The default is SSL_VERIFY_PEER, so reject anything we cannot interpret instead of ignoring it.
+    croak("Invalid SSL_verify_mode: $mode")
+      unless $mode =~ /\A[0-9]+\z/ && ($mode & ~0x0f) == 0;
+    $self->__set_ssl_verify_mode($mode);
   }
 
   if (my $cb = $self->_new_reconnect_on_error_cb($args{reconnect_on_error})) {
@@ -614,6 +611,33 @@ wait for a next force reconnect until this value seconds elapse.
 This unit is a second, and the type is double. For example, 0.01 means 10 milliseconds.
 
 Note: This feature is not supported for the subscribed mode.
+
+=head2 SSL/TLS
+
+Set the C<ssl> option to connect to the server over TLS.
+
+    my $r = Redis::Fast->new(
+      server => 'redis.example.com:6380',
+      ssl    => 1,
+    );
+
+By default the server certificate is verified against the system CA store,
+and its name must match the host name in C<server>.
+To trust a private CA, point the C<SSL_CERT_FILE> or C<SSL_CERT_DIR>
+environment variable at it.
+
+C<SSL_verify_mode> changes the verification mode.
+It accepts the C<SSL_VERIFY_*> constants of L<IO::Socket::SSL>,
+but IO::Socket::SSL is not required.
+Passing C<0> (C<SSL_VERIFY_NONE>) disables the verification,
+which makes the connection vulnerable to man-in-the-middle attacks.
+
+    use IO::Socket::SSL qw(SSL_VERIFY_NONE);
+    my $r = Redis::Fast->new(
+      server          => 'redis.example.com:6380',
+      ssl             => 1,
+      SSL_verify_mode => SSL_VERIFY_NONE, # not recommended
+    );
 
 =head1 PERFORMANCE IN SYNCHRONIZE MODE
 
