@@ -30,7 +30,7 @@ sub test_tls {
                 ReuseAddr     => 1,
                 SSL_cert_file => 't/ssl/cert.pem',
                 SSL_key_file  => 't/ssl/key.pem',
-            ) or die "failed to start TLS server: $IO::Socket::SSL::SSL_ERROR";
+            ) or die "failed to start TLS server: " . IO::Socket::SSL->errstr;
             while (1) {
                 my $c = $srv->accept or next;
                 while (sysread($c, my $buf, 4096)) {
