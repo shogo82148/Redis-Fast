@@ -49,9 +49,12 @@ for my $name (sort keys %scenarios) {
     # the callback of foo is still registered in hiredis, so the messages reach it
     my $server = start_server($scenarios{$name} . ("*3\r\n" . bulk('message') . bulk('foo') . bulk('bar')) x 3);
     my $r = Redis::Fast->new(server => '127.0.0.1:' . $server->port, reconnect => 0);
-    local $SIG{__WARN__} = sub {}; # messages for a topic without callbacks
-    $r->subscribe('foo', sub {});
-    eval { $r->wait_for_messages(1) for 1..3 };
+    # After an unsubscribe reply, Redis::Fast has no callback for foo and warns about the messages instead.
+    my (@received, $unexpected);
+    local $SIG{__WARN__} = sub { $unexpected++ if $_[0] =~ /\(message:foo\) without expected callback/ };
+    $r->subscribe('foo', sub { push @received, $_[0] });
+    eval { $r->wait_for_messages(1) while @received + ($unexpected || 0) < 3 }; # the server closes the connection
+    is_deeply [@received, ('bar') x ($unexpected || 0)], [('bar') x 3], "all messages reach the client: $name";
     undef $r; # hiredis calls the remaining callbacks with a NULL reply here
     pass "survived: $name";
 }
