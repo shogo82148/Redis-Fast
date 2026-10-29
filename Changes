@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - Fix use-after-free and double free when the server sends unexpected
+      subscription replies, such as an unsubscribe before the subscription is confirmed.
     - [INCOMPATIBLE] Verify the server certificate by default when ssl is enabled.
       Pass SSL_verify_mode => 0 to restore the previous behavior (not recommended).
     - SSL_verify_mode no longer requires IO::Socket::SSL, accepts combined flags,
