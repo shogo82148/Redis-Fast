@@ -1,6 +1,7 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - Fix out-of-bounds read when an INFO reply ends with CR without LF.
     - Fix use-after-free and double free when the server sends unexpected
       subscription replies, such as an unsubscribe before the subscription is confirmed.
     - [INCOMPATIBLE] Verify the server certificate by default when ssl is enabled.
