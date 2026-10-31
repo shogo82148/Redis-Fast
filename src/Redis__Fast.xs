@@ -947,8 +947,11 @@ static redis_fast_reply_t Redis__Fast_info_custom_decode(pTHX_ Redis__Fast self,
             if(line == NULL) {
                 break;
             } else {
-                len -= linelen + 2;
-                str += linelen + 2;
+                // skip "\r" and the following "\n", without going past the end of the reply
+                size_t skip = linelen + 1;
+                if(skip < len && str[skip] == '\n') skip++;
+                len -= skip;
+                str += skip;
             }
         }
     } else {
