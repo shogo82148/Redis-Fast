@@ -7,7 +7,7 @@ use Test::SpawnRedisServer;
 
 use constant SSL_AVAILABLE => eval { require IO::Socket::SSL };
 
-my ($c, $t, $srv) = redis();
+my ($c, $t, $srv) = redis(requires_version => '2.8.12'); # CLIENT KILL TYPE
 my $use_ssl = $t ? SSL_AVAILABLE : 0;
 END {
     $c->() if $c;
