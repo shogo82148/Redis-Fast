@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.40 2026-11-01T10:44:05Z
     - Fix restoring subscriptions on reconnect when a channel or pattern
       name contains a newline followed by "message:" or "pmessage:".
     - Fix out-of-bounds read when an INFO reply ends with CR without LF.

@@ -80,7 +80,7 @@
          "web" : "https://github.com/shogo82148/Redis-Fast"
       }
    },
-   "version" : "0.39",
+   "version" : "0.40",
    "x_contributors" : [
       "Aaron Crane <arc@aaroncrane.co.uk>",
       "Aaron Crane <arc@cpan.org>",
