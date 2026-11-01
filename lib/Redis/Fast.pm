@@ -51,7 +51,9 @@ sub _new_on_connect_cb {
         $self->__get_data->{subscribers} = {};
         $self->__get_data->{cbs} = undef;
         foreach my $topic (CORE::keys(%{$subscribers})) {
-            if ($topic =~ /(p?message):(.*)$/ ) {
+            # anchor the pattern and match newlines, so that a channel name containing
+            # "\nmessage:" is not mistaken for another channel
+            if ($topic =~ /\A(p?message):(.*)\z/s ) {
                 my ($key, $channel) = ($1, $2);
                 my $subs = $subscribers->{$topic};
                 if ($key eq 'message') {
