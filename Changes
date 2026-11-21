@@ -1,6 +1,7 @@
 Revision history for Redis
 
 {{$NEXT}}
+    - bump hiredis v1.5.1 #184
 
 0.40 2026-11-01T10:44:05Z
     - Fix restoring subscriptions on reconnect when a channel or pattern
