@@ -1,6 +1,8 @@
 Revision history for Redis
 
 {{$NEXT}}
+
+0.41 2026-11-23T03:44:48Z
     - bump hiredis v1.5.1 #184
 
 0.40 2026-11-01T10:44:05Z
